@@ -11,6 +11,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Increase limit for base64 images
 
+// Health Check Route
+app.get("/", (req, res) => {
+  res.send(
+    "Backend API is running. use POST /api/analyze to analyze floor plans."
+  );
+});
+
 // Initialize Gemini Client
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -146,6 +153,9 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
+// Specific setup for Vercel:
+// 1. Export the app so Vercel can run it as a serverless function.
+// 2. Only listen on a port if running locally (not imported as a module).
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
