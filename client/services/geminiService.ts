@@ -18,13 +18,16 @@ export const analyzeFloorPlan = async (file: File): Promise<AnalysisResult> => {
   const mimeType = file.type;
 
   try {
-    const response = await fetch("http://localhost:5000/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ base64Data, mimeType }),
-    });
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || ""}/api/analyze`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ base64Data, mimeType }),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
