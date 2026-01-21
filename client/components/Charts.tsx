@@ -30,44 +30,47 @@ export const CostDistributionChart: React.FC<ChartProps> = ({
   if (data.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center">
-      <h3 className="text-sm font-semibold text-slate-700 mb-4 w-full border-b border-slate-100 pb-2">
-        Cost Distribution
-      </h3>
-      <div className="w-full h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              outerRadius={100}
-              innerRadius={60}
-              paddingAngle={2}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                  stroke="transparent"
-                />
-              ))}
-            </Pie>
-            <RechartsTooltip
-              formatter={(value: number) => formatCurrency(value)}
-              contentStyle={{
-                borderRadius: "0.5rem",
-                border: "none",
-                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-              }}
-            />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="w-full h-[300px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={100}
+            innerRadius={60}
+            paddingAngle={2}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={COLORS[index % COLORS.length]}
+                stroke="transparent"
+              />
+            ))}
+          </Pie>
+          <RechartsTooltip
+            formatter={(value: number) => formatCurrency(value)}
+            contentStyle={{
+              borderRadius: "0.75rem",
+              border: "1px solid #e2e8f0", // slate-200
+              boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              color: "#1e293b", // slate-800
+            }}
+            itemStyle={{ color: "#1e293b" }}
+          />
+          <Legend
+            verticalAlign="bottom"
+            height={36}
+            iconType="circle"
+            wrapperStyle={{ paddingTop: "20px" }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
   );
 };

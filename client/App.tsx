@@ -12,7 +12,7 @@ import { FileUpload } from "./components/FileUpload";
 import { CalibrationPanel } from "./components/CalibrationPanel";
 import { StatsSummary } from "./components/StatsSummary";
 import { ResultsDashboard } from "./components/ResultsDashboard";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Home, List } from "lucide-react";
 
 function App() {
   // State
@@ -22,6 +22,10 @@ function App() {
   const [rawAnalysis, setRawAnalysis] = useState<AnalysisResult | null>(null);
   const [calibrationArea, setCalibrationArea] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<"overview" | "rooms" | "boq">(
+    "overview"
+  );
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [settings, setSettings] = useState<ProjectSettings>({
     currency: "INR",
@@ -29,20 +33,36 @@ function App() {
     brickSize: "standard",
   });
 
+  // Effect to toggle dark class on html element
+  React.useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
   const [customRates, setCustomRates] = useState<Record<string, number>>({});
+  const [areaUnit, setAreaUnit] = useState<"sqm" | "sqft">("sqm");
 
   // Derived State: Calibrated Analysis
   const calibratedAnalysis = useMemo<AnalysisResult | null>(() => {
     if (!rawAnalysis) return null;
-    const userArea = parseFloat(calibrationArea);
-    if (!calibrationArea || isNaN(userArea) || userArea <= 0)
+    const inputArea = parseFloat(calibrationArea);
+    if (!calibrationArea || isNaN(inputArea) || inputArea <= 0)
       return rawAnalysis;
 
-    const scaleFactor = Math.sqrt(userArea / rawAnalysis.summary.totalAreaSqM);
+    const userAreaSqM = areaUnit === "sqft" ? inputArea / 10.7639 : inputArea;
+
+    const scaleFactor = Math.sqrt(
+      userAreaSqM / rawAnalysis.summary.totalAreaSqM
+    );
     return {
       ...rawAnalysis,
       summary: {
-        totalAreaSqM: userArea,
+        totalAreaSqM: userAreaSqM,
         totalWallLengthM: rawAnalysis.summary.totalWallLengthM * scaleFactor,
         wallThicknessM: rawAnalysis.summary.wallThicknessM,
       },
@@ -52,7 +72,7 @@ function App() {
         perimeterM: (r.perimeterM || Math.sqrt(r.areaSqM) * 4) * scaleFactor,
       })),
     };
-  }, [rawAnalysis, calibrationArea]);
+  }, [rawAnalysis, calibrationArea, areaUnit]);
 
   // Derived State: Global Structure Costs
   const globalStructureCosts = useMemo<MaterialCost[]>(() => {
@@ -144,7 +164,11 @@ function App() {
     try {
       const result = await analyzeFloorPlan(file);
       setRawAnalysis(result);
-      setCalibrationArea(result.summary.totalAreaSqM.toFixed(1));
+      const area =
+        areaUnit === "sqft"
+          ? result.summary.totalAreaSqM * 10.7639
+          : result.summary.totalAreaSqM;
+      setCalibrationArea(area.toFixed(1));
     } catch (err: any) {
       setError(err.message || "Failed to analyze floor plan.");
     } finally {
@@ -157,6 +181,18 @@ function App() {
     setPreviewUrl(null);
     setRawAnalysis(null);
     setError(null);
+  };
+
+  const handleUnitChange = (newUnit: "sqm" | "sqft") => {
+    const currentVal = parseFloat(calibrationArea);
+    if (!isNaN(currentVal) && calibrationArea) {
+      if (newUnit === "sqft" && areaUnit === "sqm") {
+        setCalibrationArea((currentVal * 10.7639).toFixed(1));
+      } else if (newUnit === "sqm" && areaUnit === "sqft") {
+        setCalibrationArea((currentVal / 10.7639).toFixed(1));
+      }
+    }
+    setAreaUnit(newUnit);
   };
 
   const handleRateUpdate = (id: string, newRate: number) => {
@@ -172,61 +208,102 @@ function App() {
     }).format(val);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      <Header />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 transition-colors duration-300">
+      <Header isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in text-slate-900 dark:text-slate-100">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* LEFT COLUMN: Input & Settings */}
-          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
-            <FileUpload
-              file={file}
-              previewUrl={previewUrl}
-              isAnalyzing={isAnalyzing}
-              error={error}
-              onFileChange={handleFileChange}
-              onAnalyze={handleAnalyze}
-              onClear={clearFile}
-            />
+          {/* LEFT COLUMN: Sidebar Navigation & Tools */}
+          <div className="lg:col-span-3 space-y-6 lg:sticky lg:top-24">
+            {/* Navigation */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300">
+              <nav className="flex flex-col p-2 space-y-1">
+                <button
+                  onClick={() => setCurrentView("overview")}
+                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    currentView === "overview"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5 mr-3" />
+                  Cost Overview
+                </button>
+                <button
+                  onClick={() => setCurrentView("rooms")}
+                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    currentView === "rooms"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  }`}
+                >
+                  <Home className="w-5 h-5 mr-3" />
+                  Room Analysis
+                </button>
+                <button
+                  onClick={() => setCurrentView("boq")}
+                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    currentView === "boq"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  }`}
+                >
+                  <List className="w-5 h-5 mr-3" />
+                  Full BOQ
+                </button>
+              </nav>
+            </div>
+
+            {/* Upload & Preview */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 transition-all duration-300">
+              <FileUpload
+                file={file}
+                previewUrl={previewUrl}
+                isAnalyzing={isAnalyzing}
+                error={error}
+                onFileChange={handleFileChange}
+                onAnalyze={handleAnalyze}
+                onClear={clearFile}
+              />
+            </div>
 
             {calibratedAnalysis && (
               <CalibrationPanel
                 calibrationArea={calibrationArea}
                 setCalibrationArea={setCalibrationArea}
+                areaUnit={areaUnit}
+                setAreaUnit={handleUnitChange}
                 settings={settings}
                 setSettings={setSettings}
               />
             )}
           </div>
 
-          {/* RIGHT COLUMN: Results */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* RIGHT COLUMN: Main Content */}
+          <div className="lg:col-span-9 space-y-6">
             {!calibratedAnalysis ? (
-              <div className="h-[500px] flex flex-col items-center justify-center bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400 p-8 text-center animate-fade-in">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4 ring-1 ring-slate-100">
-                  <BarChart3 className="w-8 h-8 text-slate-300" />
+              <div className="h-[600px] flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 p-8 text-center animate-fade-in transition-all duration-300">
+                <div className="w-24 h-24 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-6 ring-1 ring-slate-100 dark:ring-slate-600">
+                  <BarChart3 className="w-10 h-10 text-slate-300 dark:text-slate-500" />
                 </div>
-                <h3 className="text-lg font-medium text-slate-600 mb-2">
+                <h3 className="text-xl font-medium text-slate-600 dark:text-slate-300 mb-3">
                   Ready to Estimate
                 </h3>
-                <p className="max-w-xs mx-auto mb-6">
+                <p className="max-w-md mx-auto mb-8 text-lg">
                   Upload a construction floor plan on the left to generate
                   instant material quantity and cost estimates.
                 </p>
-                <div className="flex gap-2 justify-center">
-                  <span className="w-2 h-2 rounded-full bg-slate-200"></span>
-                  <span className="w-2 h-2 rounded-full bg-slate-200"></span>
-                  <span className="w-2 h-2 rounded-full bg-slate-200"></span>
-                </div>
               </div>
             ) : (
               <>
+                {/* Stats Row */}
                 <StatsSummary
                   analysis={calibratedAnalysis}
                   totalCost={totalProjectCost}
                   formatCurrency={formatINR}
                 />
 
+                {/* Dashboard View */}
                 <ResultsDashboard
                   analysis={calibratedAnalysis}
                   globalStructureCosts={globalStructureCosts}
@@ -235,6 +312,8 @@ function App() {
                   onRateUpdate={handleRateUpdate}
                   formatCurrency={formatINR}
                   consolidatedReport={consolidatedReport}
+                  currentView={currentView}
+                  onViewChange={setCurrentView}
                 />
               </>
             )}
