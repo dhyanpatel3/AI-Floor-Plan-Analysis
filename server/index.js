@@ -11,6 +11,12 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Log all incoming requests for debugging Vercel routing
+app.use((req, res, next) => {
+  console.log(`Incoming request: ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Increase limit for base64 images
 app.use(express.urlencoded({ extended: true }));
