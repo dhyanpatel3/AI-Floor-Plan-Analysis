@@ -193,11 +193,7 @@ app.post("/api/analyze", async (req, res) => {
           .status(429)
           .json({ error: "Daily quota exceeded. Please try again later." });
       }
-      console.error("Gemini API Error:", lastError); // Log the actual error
-      return res.status(500).json({ 
-        error: `Analysis failed: ${lastError?.message || "Unknown error"}`,
-        details: lastError 
-      });
+      return res.status(500).json({ error: "Failed to process image." });
     }
 
     res.json(result);
