@@ -6,13 +6,20 @@ interface StatsSummaryProps {
   analysis: AnalysisResult;
   totalCost: number;
   formatCurrency: (val: number) => string;
+  areaUnit: "sqm" | "sqft";
 }
 
 export const StatsSummary: React.FC<StatsSummaryProps> = ({
   analysis,
   totalCost,
   formatCurrency,
+  areaUnit,
 }) => {
+  const displayArea =
+    areaUnit === "sqft"
+      ? analysis.summary.totalAreaSqM * 10.7639
+      : analysis.summary.totalAreaSqM;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
       <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center space-x-4 hover:shadow-md dark:hover:shadow-slate-700/30 transition-all duration-300">
@@ -24,11 +31,11 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({
             Total Area
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-            {analysis.summary.totalAreaSqM.toLocaleString(undefined, {
+            {displayArea.toLocaleString(undefined, {
               maximumFractionDigits: 1,
             })}
             <span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-1">
-              m²
+              {areaUnit === "sqft" ? "ft²" : "m²"}
             </span>
           </div>
         </div>

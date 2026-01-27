@@ -2,19 +2,26 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { GoogleGenAI, Type } = require("@google/genai");
+const connectDB = require("./config/db");
 
 dotenv.config();
+
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" })); // Increase limit for base64 images
+app.use(express.urlencoded({ extended: true }));
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/floorplans", require("./routes/floorPlanRoutes"));
+app.use("/api/settings", require("./routes/settingsRoutes"));
 
 // Health Check Route
 app.get("/", (req, res) => {
   res.send(
-    "Backend API is running. use POST /api/analyze to analyze floor plans."
+    "Backend API is running. use POST /api/analyze to analyze floor plans.",
   );
 });
 
@@ -54,9 +61,11 @@ app.post("/api/analyze", async (req, res) => {
     // Retry mechanism
     let retries = 3;
     let result = null;
+    let lastError = null;
 
     while (retries > 0) {
       try {
+        console.log(`Attempting analysis with model: ${model}`);
         const response = await ai.models.generateContent({
           model: model,
           contents: [
@@ -125,25 +134,41 @@ app.post("/api/analyze", async (req, res) => {
 
         if (response && response.text) {
           result = JSON.parse(response.text);
+          console.log(`Success with model: ${model}`);
+          break;
         } else {
           throw new Error("No text returned from Gemini");
         }
-        break;
       } catch (err) {
+        lastError = err;
         if (err?.status === 503 && retries > 1) {
-          console.warn(`Model overloaded, retrying... (${retries - 1} left)`);
+          console.warn(
+            `Model ${model} overloaded, retrying... (${retries - 1} left)`,
+          );
           await new Promise((resolve) => setTimeout(resolve, 2000));
           retries--;
+        } else if (err?.status === 429) {
+          // If quota exceeded, no point retrying immediately.
+          break;
         } else {
-          throw err;
+          if (retries > 1) {
+            console.warn(`Error: ${err.message}. Retrying...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            retries--;
+          } else {
+            break;
+          }
         }
       }
     }
 
     if (!result) {
-      return res
-        .status(500)
-        .json({ error: "Failed to process image after retries." });
+      if (lastError?.status === 429 || lastError?.message?.includes("429")) {
+        return res
+          .status(429)
+          .json({ error: "Daily quota exceeded. Please try again later." });
+      }
+      return res.status(500).json({ error: "Failed to process image." });
     }
 
     res.json(result);

@@ -9,11 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.35.0",
+    "axios": "^1.13.3",
+    "cloudinary": "^1.41.3",
     "lucide-react": "^0.562.0",
-    "react-dom": "^19.2.3",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
     "react": "^19.2.3",
-    "recharts": "^3.6.0",
-    "@google/genai": "^1.35.0"
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^7.13.0",
+    "react-toastify": "^11.0.5",
+    "recharts": "^3.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

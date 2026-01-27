@@ -27,6 +27,8 @@ interface ResultsDashboardProps {
   consolidatedReport: { category: string; cost: number }[];
   currentView: "overview" | "rooms" | "boq";
   onViewChange?: (view: "overview" | "rooms" | "boq") => void;
+  areaUnit: "sqm" | "sqft";
+  scalingFactors?: Record<string, number>;
 }
 
 export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
@@ -39,20 +41,59 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   consolidatedReport,
   currentView,
   onViewChange,
+  areaUnit,
+  scalingFactors = {},
 }) => {
   const [selectedRoomIndex, setSelectedRoomIndex] = useState<number | null>(
-    null
+    null,
   );
+
+  // Helper to apply scaling factors
+  const getScaledRoomMaterials = (room: AnalysisResult["rooms"][0]) => {
+    const result = calculateRoomMaterials(room, settings, customRates);
+    if (Object.keys(scalingFactors).length === 0) return result;
+
+    const scaledMaterials = result.materials.map((item) => {
+      const factor = scalingFactors[item.id];
+      if (factor !== undefined) {
+        const newQty = item.quantity * factor;
+        return { ...item, quantity: newQty, totalCost: newQty * item.unitRate };
+      }
+      return item;
+    });
+
+    const newTotal = scaledMaterials.reduce(
+      (acc, curr) => acc + curr.totalCost,
+      0,
+    );
+    return { ...result, materials: scaledMaterials, totalCost: newTotal };
+  };
+
+  const formatArea = (areaSqM: number) => {
+    if (areaUnit === "sqft") {
+      return (
+        <span>
+          {(areaSqM * 10.7639).toFixed(1)}{" "}
+          <span className="text-sm text-slate-400 dark:text-slate-500">
+            ft²
+          </span>
+        </span>
+      );
+    }
+    return (
+      <span>
+        {areaSqM.toFixed(1)}{" "}
+        <span className="text-sm text-slate-400 dark:text-slate-500">m²</span>
+      </span>
+    );
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Derived: Selected Room
   const selectedRoomCost =
     selectedRoomIndex !== null
-      ? calculateRoomMaterials(
-          analysis.rooms[selectedRoomIndex],
-          settings,
-          customRates
-        )
+      ? getScaledRoomMaterials(analysis.rooms[selectedRoomIndex])
       : null;
 
   // Get materials for selected category
@@ -62,13 +103,13 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
     // Check if it's from global structure costs
     if (category === "Civil Structure") {
       return globalStructureCosts.filter(
-        (m) => m.category === "Structure" || m.category === "Reinforcement"
+        (m) => m.category === "Structure" || m.category === "Reinforcement",
       );
     }
 
     // Check other categories from rooms
     analysis.rooms.forEach((room) => {
-      const roomDetails = calculateRoomMaterials(room, settings, customRates);
+      const roomDetails = getScaledRoomMaterials(room);
       roomDetails.materials.forEach((item) => {
         let itemCategory: string = item.category;
 
@@ -129,12 +170,18 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
 
     // 2. All Room Materials
     analysis.rooms.forEach((room) => {
-      const roomDetails = calculateRoomMaterials(room, settings, customRates);
+      const roomDetails = getScaledRoomMaterials(room);
       roomDetails.materials.forEach(addMaterial);
     });
 
     return Array.from(combined.values());
-  }, [globalStructureCosts, analysis.rooms, settings, customRates]);
+  }, [
+    globalStructureCosts,
+    analysis.rooms,
+    settings,
+    customRates,
+    scalingFactors,
+  ]);
 
   // Chart Data
   const chartData = consolidatedReport.map((item) => ({
@@ -145,8 +192,8 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   // Room Detail View
   if (selectedRoomCost && selectedRoomIndex !== null) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[500px] animate-fade-in transition-all duration-300">
-        <div className="bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden h-full flex flex-col animate-fade-in transition-all duration-300">
+        <div className="bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center backdrop-blur-sm flex-none">
           <button
             onClick={() => setSelectedRoomIndex(null)}
             className="flex items-center text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
@@ -162,7 +209,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             </h3>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
               <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">
@@ -177,10 +224,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                 Area
               </div>
               <div className="text-xl font-medium text-slate-800 dark:text-slate-200 mt-1">
-                {analysis.rooms[selectedRoomIndex].areaSqM.toFixed(1)}{" "}
-                <span className="text-sm text-slate-400 dark:text-slate-500">
-                  m²
-                </span>
+                {formatArea(analysis.rooms[selectedRoomIndex].areaSqM)}
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
@@ -210,12 +254,12 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   if (selectedCategoryMaterials && selectedCategory) {
     const totalCategoryCost = selectedCategoryMaterials.reduce(
       (sum, m) => sum + m.totalCost,
-      0
+      0,
     );
 
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[500px] animate-fade-in transition-all duration-300">
-        <div className="bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden h-full flex flex-col animate-fade-in transition-all duration-300">
+        <div className="bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center backdrop-blur-sm flex-none">
           <button
             onClick={() => setSelectedCategory(null)}
             className="flex items-center text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
@@ -228,7 +272,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             </h3>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
               <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">
@@ -263,16 +307,16 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
 
   // Dashboard View
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[500px]">
-      <div className="p-6 bg-white dark:bg-slate-800">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden h-full flex flex-col">
+      <div className="p-6 bg-white dark:bg-slate-800 flex-1 flex flex-col overflow-hidden">
         {currentView === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in">
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in h-full overflow-hidden">
+            <div className="space-y-6 flex flex-col h-full overflow-hidden">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center shrink-0">
                 <Layers className="w-5 h-5 mr-2 text-indigo-500" /> Cost
                 Breakdown
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2 min-h-0 custom-scrollbar">
                 {consolidatedReport.map((item, idx) => (
                   <div
                     key={idx}
@@ -299,7 +343,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                 ))}
               </div>
 
-              <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mt-4">
+              <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mt-4 shrink-0">
                 <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
                   <span className="font-bold">Note:</span> Initial structure
                   cost (foundations, columns, slabs) is distributed. Adjust
@@ -309,68 +353,72 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-6 shadow-sm overflow-hidden flex flex-col">
+              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-6 shrink-0">
                 Cost Distribution
               </h3>
-              <CostDistributionChart
-                data={chartData}
-                formatCurrency={formatCurrency}
-              />
+              <div className="flex-1 min-h-0">
+                <CostDistributionChart
+                  data={chartData}
+                  formatCurrency={formatCurrency}
+                />
+              </div>
             </div>
           </div>
         )}
 
         {currentView === "rooms" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-            {analysis.rooms.map((room, index) => {
-              const details = calculateRoomMaterials(
-                room,
-                settings,
-                customRates
-              );
-              return (
-                <div
-                  key={index}
-                  onClick={() => setSelectedRoomIndex(index)}
-                  className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 cursor-pointer transition-all group"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-bold text-slate-800 dark:text-white text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {room.name}
-                      </h4>
-                      <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded mt-1 inline-block">
-                        {room.type}
-                      </span>
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in pb-2">
+              {analysis.rooms.map((room, index) => {
+                const details = calculateRoomMaterials(
+                  room,
+                  settings,
+                  customRates,
+                );
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedRoomIndex(index)}
+                    className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 cursor-pointer transition-all group"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-bold text-slate-800 dark:text-white text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {room.name}
+                        </h4>
+                        <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-1 rounded mt-1 inline-block">
+                          {room.type}
+                        </span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                        <ChevronRight className="w-5 h-5" />
+                      </div>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/50 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                      <ChevronRight className="w-5 h-5" />
+                    <div className="flex justify-between items-end">
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        {formatArea(room.areaSqM)}
+                      </div>
+                      <div className="font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(details.totalCost)}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-between items-end">
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
-                      {room.areaSqM.toFixed(1)} m²
-                    </div>
-                    <div className="font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(details.totalCost)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
         {currentView === "boq" && (
-          <div className="animate-fade-in space-y-8">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+          <div className="animate-fade-in space-y-8 h-full flex flex-col">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex-1 flex flex-col">
+              <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 flex-none">
                 <h3 className="font-bold text-slate-800 dark:text-white">
                   Full Project Bill of Quantities
                 </h3>
               </div>
-              <div className="p-4">
+              <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
                 <CostTable
                   materials={fullProjectBOQ}
                   currency={settings.currency}
