@@ -8,6 +8,10 @@ dotenv.config();
 
 connectDB();
 
+if (!process.env.MONGO_URI) {
+  console.error("MONGO_URI is undefined in environment variables.");
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
