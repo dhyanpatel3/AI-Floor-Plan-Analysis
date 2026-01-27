@@ -25,17 +25,7 @@ app.use((req, res, next) => {
 });
 
 // Configure CORS to allow requests from your client
-app.use(
-  cors({
-    origin: [
-      "https://ai-floor-plan-analysis.vercel.app",
-      "http://localhost:3000",
-    ],
-    methods: ["POST", "GET", "PUT", "DELETE", "OPTIONS"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+app.use(cors());
 
 // Handle preflight requests specifically (if cors module doesn't catch them automatically)
 app.options("*", cors());
