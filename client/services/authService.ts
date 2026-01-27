@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_URL = "/api/auth/";
+// Use environment variable for host, or fallback to relative path (proxy)
+const BASE_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = `${BASE_URL}/api/auth/`;
 
 // Register user
 const register = async (userData: any) => {

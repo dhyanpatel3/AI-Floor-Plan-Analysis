@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: "0.0.0.0",
       proxy: {
+        // Proxy is only for local dev. In production, VITE_API_URL should be set.
         "/api": {
           target: "http://localhost:5000",
           changeOrigin: true,
