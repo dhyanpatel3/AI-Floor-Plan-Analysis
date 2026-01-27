@@ -18,12 +18,19 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/floorplans", require("./routes/floorPlanRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
 
-// Health Check Route
 app.get("/", (req, res) => {
-  res.send(
-    "Backend API is running. use POST /api/analyze to analyze floor plans.",
-  );
+  res.send({ status: "Backend API is running", timestamp: new Date() });
 });
+
+// Configure Routes with and without /api prefix to handle Vercel routing quirks
+const apiRouter = express.Router();
+apiRouter.use("/auth", require("./routes/authRoutes"));
+apiRouter.use("/floorplans", require("./routes/floorPlanRoutes"));
+apiRouter.use("/settings", require("./routes/settingsRoutes"));
+
+app.use("/api", apiRouter);
+// Fallback: If Vercel rewrites strip '/api', this catches it
+app.use("/", apiRouter);
 
 // Initialize Gemini Client
 const apiKey = process.env.GEMINI_API_KEY;
