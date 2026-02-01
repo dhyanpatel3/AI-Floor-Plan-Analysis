@@ -357,12 +357,80 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       return;
     }
 
+    // Calculate all data needed for storage
+    // 1. Calculate Per-Room Costs
+    const roomCosts = calibratedAnalysis.rooms.map((room) => {
+      const result = calculateRoomMaterials(room, settings, customRates);
+
+      // Apply scaling
+      const scaledMaterials = result.materials.map((item) => {
+        const factor = scalingFactors[item.id];
+        if (factor !== undefined) {
+          const newQty = item.quantity * factor;
+          return {
+            ...item,
+            quantity: newQty,
+            totalCost: newQty * item.unitRate,
+          };
+        }
+        return item;
+      });
+
+      const newTotal = scaledMaterials.reduce(
+        (acc, curr) => acc + curr.totalCost,
+        0,
+      );
+      return { ...result, materials: scaledMaterials, totalCost: newTotal };
+    });
+
+    // 2. Calculate Full BOQ
+    const combinedBOQMap = new Map<string, MaterialCost>();
+    // Add Global Structure
+    globalStructureCosts.forEach((m) => {
+      if (combinedBOQMap.has(m.id)) {
+        const ex = combinedBOQMap.get(m.id)!;
+        combinedBOQMap.set(m.id, {
+          ...ex,
+          quantity: ex.quantity + m.quantity,
+          totalCost: ex.totalCost + m.totalCost,
+        });
+      } else {
+        combinedBOQMap.set(m.id, { ...m });
+      }
+    });
+
+    // Add Rooms
+    roomCosts.forEach((r) => {
+      r.materials.forEach((m) => {
+        if (combinedBOQMap.has(m.id)) {
+          const ex = combinedBOQMap.get(m.id)!;
+          combinedBOQMap.set(m.id, {
+            ...ex,
+            quantity: ex.quantity + m.quantity,
+            totalCost: ex.totalCost + m.totalCost,
+          });
+        } else {
+          combinedBOQMap.set(m.id, { ...m });
+        }
+      });
+    });
+    const fullBOQ = Array.from(combinedBOQMap.values());
+
     // Capture the current state of cost estimation
     const costEstimationData = {
       globalStructureCosts,
       consolidatedReport,
       totalProjectCost,
       customRates,
+      customQuantities,
+      settings,
+      calibrationArea,
+      areaUnit,
+      calculatedQuantities,
+      baseStructureCosts,
+      scalingFactors,
+      roomCosts,
+      fullBOQ,
       // Any other calculated data we want to persist
       generatedAt: new Date().toISOString(),
     };
@@ -406,8 +474,15 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     setCustomRates((prev) => ({ ...prev, [id]: newRate }));
   };
 
-  const handleQuantityUpdate = (id: string, newQty: number) => {
-    setCustomQuantities((prev) => ({ ...prev, [id]: newQty }));
+  const handleQuantityUpdate = (id: string, newQty: number | undefined) => {
+    setCustomQuantities((prev) => {
+      if (newQty === undefined) {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      return { ...prev, [id]: newQty };
+    });
   };
 
   const handleDownloadPDF = () => {
@@ -446,109 +521,111 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       />
 
       <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-          {/* LEFT COLUMN: Sidebar Navigation & Tools */}
-          <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-            {/* Navigation */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shrink-0">
-              <nav className="flex flex-col p-2 space-y-1">
-                <button
-                  onClick={() => setCurrentView("overview")}
-                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    currentView === "overview"
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <BarChart3 className="w-5 h-5 mr-3" />
-                  Cost Overview
-                </button>
-                <button
-                  onClick={() => setCurrentView("rooms")}
-                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    currentView === "rooms"
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <Home className="w-5 h-5 mr-3" />
-                  Room Analysis
-                </button>
-                <button
-                  onClick={() => setCurrentView("boq")}
-                  className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    currentView === "boq"
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  }`}
-                >
-                  <List className="w-5 h-5 mr-3" />
-                  Full BOQ
-                </button>
-              </nav>
-            </div>
-
-            {/* Upload & Preview */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 transition-all duration-300 flex-1 overflow-y-auto lg:overflow-visible custom-scrollbar">
-              <FileUpload
-                file={file}
-                previewUrl={previewUrl}
-                isAnalyzing={isAnalyzing}
-                error={error}
-                onFileChange={handleFileChange}
-                onAnalyze={handleAnalyze}
-                onClear={clearFile}
-              />
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: Main Content */}
-          <div className="lg:col-span-9 flex flex-col gap-6 h-full overflow-hidden">
-            {!calibratedAnalysis ? (
-              <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 p-8 text-center animate-fade-in transition-all duration-300">
-                <div className="w-24 h-24 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-6 ring-1 ring-slate-100 dark:ring-slate-600">
-                  <BarChart3 className="w-10 h-10 text-slate-300 dark:text-slate-500" />
-                </div>
-                <h3 className="text-xl font-medium text-slate-600 dark:text-slate-300 mb-3">
-                  Ready to Estimate
-                </h3>
-                <p className="max-w-md mx-auto mb-8 text-lg">
-                  Upload a construction floor plan on the left to generate
-                  instant material quantity and cost estimates.
-                </p>
+        {!calibratedAnalysis ? (
+          <div className="h-full flex flex-col items-center justify-center animate-fade-in transition-all duration-300 pointer-events-auto">
+            <div className="w-full max-w-3xl mx-auto px-4">
+              <div className="transform transition-all hover:scale-[1.01] duration-300 shadow-xl rounded-xl">
+                <FileUpload
+                  file={file}
+                  previewUrl={previewUrl}
+                  isAnalyzing={isAnalyzing}
+                  error={error}
+                  onFileChange={handleFileChange}
+                  onAnalyze={handleAnalyze}
+                  onClear={clearFile}
+                  variant="hero"
+                />
               </div>
-            ) : (
-              <>
-                {/* Stats Row */}
-                <div className="shrink-0">
-                  <StatsSummary
-                    analysis={calibratedAnalysis}
-                    totalCost={totalProjectCost}
-                    formatCurrency={formatINR}
-                    areaUnit={areaUnit}
-                  />
-                </div>
-
-                {/* Dashboard View */}
-                <div className="flex-1 overflow-hidden">
-                  <ResultsDashboard
-                    analysis={calibratedAnalysis}
-                    globalStructureCosts={globalStructureCosts}
-                    settings={settings}
-                    customRates={customRates}
-                    onRateUpdate={handleRateUpdate}
-                    formatCurrency={formatINR}
-                    consolidatedReport={consolidatedReport}
-                    currentView={currentView}
-                    onViewChange={setCurrentView}
-                    areaUnit={areaUnit}
-                    scalingFactors={scalingFactors}
-                  />
-                </div>
-              </>
-            )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+            {/* LEFT COLUMN: Sidebar Navigation & Tools */}
+            <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
+              {/* Navigation */}
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shrink-0">
+                <nav className="flex flex-col p-2 space-y-1">
+                  <button
+                    onClick={() => setCurrentView("overview")}
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      currentView === "overview"
+                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    }`}
+                  >
+                    <BarChart3 className="w-5 h-5 mr-3" />
+                    Cost Overview
+                  </button>
+                  <button
+                    onClick={() => setCurrentView("rooms")}
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      currentView === "rooms"
+                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    }`}
+                  >
+                    <Home className="w-5 h-5 mr-3" />
+                    Room Analysis
+                  </button>
+                  <button
+                    onClick={() => setCurrentView("boq")}
+                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      currentView === "boq"
+                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    }`}
+                  >
+                    <List className="w-5 h-5 mr-3" />
+                    Full BOQ
+                  </button>
+                </nav>
+              </div>
+
+              {/* Upload & Preview */}
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 transition-all duration-300 flex-1 overflow-y-auto lg:overflow-visible custom-scrollbar">
+                <FileUpload
+                  file={file}
+                  previewUrl={previewUrl}
+                  isAnalyzing={isAnalyzing}
+                  error={error}
+                  onFileChange={handleFileChange}
+                  onAnalyze={handleAnalyze}
+                  onClear={clearFile}
+                />
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Main Content */}
+            <div className="lg:col-span-9 flex flex-col gap-6 h-full overflow-hidden">
+              {/* Stats Row */}
+              <div className="shrink-0">
+                <StatsSummary
+                  analysis={calibratedAnalysis}
+                  totalCost={totalProjectCost}
+                  formatCurrency={formatINR}
+                  areaUnit={areaUnit}
+                />
+              </div>
+
+              {/* Dashboard View */}
+              <div className="flex-1 overflow-hidden">
+                <ResultsDashboard
+                  analysis={calibratedAnalysis}
+                  globalStructureCosts={globalStructureCosts}
+                  settings={settings}
+                  customRates={customRates}
+                  onRateUpdate={handleRateUpdate}
+                  formatCurrency={formatINR}
+                  consolidatedReport={consolidatedReport}
+                  currentView={currentView}
+                  onViewChange={setCurrentView}
+                  areaUnit={areaUnit}
+                  scalingFactors={scalingFactors}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <Modal
@@ -571,6 +648,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
               calculatedQuantities={calculatedQuantities}
               customQuantities={customQuantities}
               onQuantityUpdate={handleQuantityUpdate}
+              isPlanAnalyzed={!!calibratedAnalysis}
             />
           </div>
           <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-800 shrink-0">

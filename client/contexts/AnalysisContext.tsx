@@ -1,5 +1,12 @@
-import React, { createContext, useState, ReactNode, useContext } from "react";
+import React, {
+  createContext,
+  useState,
+  ReactNode,
+  useContext,
+  useEffect,
+} from "react";
 import { AnalysisResult, ProjectSettings } from "../types";
+import AuthContext from "./AuthContext";
 
 interface AnalysisContextType {
   file: File | null;
@@ -56,10 +63,18 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
     setRawAnalysis(null);
     setCalibrationArea("");
     setCurrentView("overview");
-    // We typically want to keep settings/rates even if file is cleared?
-    // Usually 'clear' means clear the uploaded file, not the user preferences.
-    // So we don't reset settings, customRates, customQuantities here unless explicitly asked.
+    setCustomQuantities({});
   };
+
+  const { user } = useContext(AuthContext) || {};
+
+  // Reset analysis when user authentication state changes (login/logout/signup)
+  useEffect(() => {
+    // This allows clearing data when a user logs out (user becomes null)
+    // or when a new user logs in (user object changes).
+    // The initial load might trigger this if user starts as null, which is fine (starts empty).
+    resetAnalysis();
+  }, [user]);
 
   return (
     <AnalysisContext.Provider

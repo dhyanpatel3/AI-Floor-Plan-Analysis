@@ -21,7 +21,8 @@ interface CalibrationPanelProps {
   onRateUpdate?: (materialId: string, newRate: number) => void;
   calculatedQuantities?: Record<string, number>;
   customQuantities?: Record<string, number>;
-  onQuantityUpdate?: (materialId: string, newQty: number) => void;
+  onQuantityUpdate?: (materialId: string, newQty: number | undefined) => void;
+  isPlanAnalyzed?: boolean;
 }
 
 export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
@@ -37,8 +38,10 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
   calculatedQuantities = {},
   customQuantities = {},
   onQuantityUpdate,
+  isPlanAnalyzed = false,
 }) => {
-  const [heightUnit, setHeightUnit] = useState<"m" | "ft">("m");
+  // Derive height unit from area unit to keep them synced
+  const heightUnit: "m" | "ft" = areaUnit === "sqm" ? "m" : "ft";
 
   const categories = Array.from(
     new Set(MATERIAL_CATALOG.map((m) => m.category)),
@@ -65,10 +68,35 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
     >
       {/* SECTION 1: GLOBAL SETTINGS */}
       <div className="space-y-4">
-        <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center">
-          <Settings2 className="w-4 h-4 mr-2 text-indigo-500" />
-          Global Parameters
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center">
+            <Settings2 className="w-4 h-4 mr-2 text-indigo-500" />
+            Global Parameters
+          </h4>
+
+          <div className="bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg inline-flex items-center">
+            <button
+              onClick={() => setAreaUnit("sqm")}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                areaUnit === "sqm"
+                  ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              }`}
+            >
+              Metric (m)
+            </button>
+            <button
+              onClick={() => setAreaUnit("sqft")}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                areaUnit === "sqft"
+                  ? "bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              }`}
+            >
+              Imperial (ft)
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Area Calibration */}
@@ -84,24 +112,13 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
                 type="number"
                 value={calibrationArea}
                 onChange={(e) => setCalibrationArea(e.target.value)}
-                className="block w-full rounded-lg border-slate-200 dark:border-slate-600 pl-3 pr-16 focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 font-medium"
+                className="block w-full rounded-lg border-slate-200 dark:border-slate-600 pl-3 pr-16 focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 bg-transparent text-slate-900 dark:text-white placeholder-slate-400 font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="0.0"
               />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                <select
-                  value={areaUnit}
-                  onChange={(e) =>
-                    setAreaUnit(e.target.value as "sqm" | "sqft")
-                  }
-                  className="h-full py-0 pl-2 pr-2 border-transparent bg-transparent text-xs font-bold text-slate-500 dark:text-slate-400 rounded-md focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400"
-                >
-                  <option value="sqm" className="dark:bg-slate-800">
-                    m²
-                  </option>
-                  <option value="sqft" className="dark:bg-slate-800">
-                    ft²
-                  </option>
-                </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <span className="text-slate-500 dark:text-slate-400 text-xs font-bold">
+                  {areaUnit === "sqm" ? "m²" : "ft²"}
+                </span>
               </div>
             </div>
             <p className="text-[10px] text-slate-400 mt-2 leading-tight">
@@ -132,23 +149,15 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
                     wallHeightM: heightUnit === "m" ? val : val / 3.28084,
                   }));
                 }}
-                className="block w-full rounded-lg border-slate-200 dark:border-slate-600 pl-3 pr-16 focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 bg-transparent text-slate-900 dark:text-white font-medium"
+                className="block w-full rounded-lg border-slate-200 dark:border-slate-600 pl-3 pr-16 focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 bg-transparent text-slate-900 dark:text-white font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                <select
-                  value={heightUnit}
-                  onChange={(e) => setHeightUnit(e.target.value as "m" | "ft")}
-                  className="h-full py-0 pl-2 pr-2 border-transparent bg-transparent text-xs font-bold text-slate-500 dark:text-slate-400 rounded-md focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400"
-                >
-                  <option value="m" className="dark:bg-slate-800">
-                    m
-                  </option>
-                  <option value="ft" className="dark:bg-slate-800">
-                    ft
-                  </option>
-                </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <span className="text-slate-500 dark:text-slate-400 text-xs font-bold">
+                  {heightUnit === "m" ? "m" : "ft"}
+                </span>
               </div>
             </div>
+            {/* Height unit is now controlled globally via top toggle */}
           </div>
 
           {/* Currency */}
@@ -268,15 +277,14 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
                             onChange={(e) => {
                               const val =
                                 e.target.value === ""
-                                  ? NaN
+                                  ? undefined
                                   : parseFloat(e.target.value);
-                              if (!isNaN(val)) {
+                              // Pass undefined to clear, or valid number
+                              if (val === undefined || !isNaN(val)) {
                                 onQuantityUpdate?.(material.id, val);
-                              } else {
-                                onQuantityUpdate?.(material.id, 0);
                               }
                             }}
-                            className={`block w-full rounded-md text-right border-0 ring-1 ring-inset ${customQuantities[material.id] !== undefined ? "ring-indigo-500 bg-indigo-50/10" : "ring-slate-300 dark:ring-slate-600 bg-transparent"} focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-xs py-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400`}
+                            className={`block w-full rounded-md border-0 ring-1 ring-inset ${customQuantities[material.id] !== undefined ? "ring-indigo-500 bg-indigo-50/10" : "ring-slate-300 dark:ring-slate-600 bg-transparent"} focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-xs py-1.5 px-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                           />
                         </div>
                         {/* Rate */}
@@ -294,7 +302,10 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
                             <input
                               type="number"
                               value={
-                                customRates[material.id] ?? material.defaultRate
+                                isPlanAnalyzed
+                                  ? (customRates[material.id] ??
+                                    material.defaultRate)
+                                  : 0
                               }
                               onChange={(e) =>
                                 onRateUpdate?.(
@@ -302,7 +313,7 @@ export const CalibrationPanel: React.FC<CalibrationPanelProps> = ({
                                   parseFloat(e.target.value) || 0,
                                 )
                               }
-                              className="block w-full rounded-md text-right border-0 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 bg-transparent focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-xs py-1.5 pl-6 text-slate-900 dark:text-slate-100"
+                              className="block w-full rounded-md border-0 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 bg-transparent focus:ring-2 focus:ring-inset focus:ring-indigo-600 text-xs py-1.5 pl-6 pr-3 text-slate-900 dark:text-slate-100 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                           </div>
                         </div>

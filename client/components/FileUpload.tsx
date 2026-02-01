@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   RefreshCw,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 
 interface FileUploadProps {
@@ -16,6 +17,7 @@ interface FileUploadProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAnalyze: () => void;
   onClear: () => void;
+  variant?: "default" | "hero";
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -26,6 +28,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onFileChange,
   onAnalyze,
   onClear,
+  variant = "default",
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +124,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          ) : variant === "hero" ? (
+            <div className="py-12 space-y-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 mb-2 ring-8 ring-indigo-50/50 dark:ring-indigo-900/10">
+                <BarChart3 className="w-10 h-10" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+                  AI Construction Estimator
+                </h1>
+                <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed px-4">
+                  Upload your floor plan to instantly generate material
+                  quantities, cost estimates, and detailed room-by-room
+                  analysis.
+                </p>
+              </div>
+              <div className="pt-4">
+                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                  Click to Upload or Drag & Drop
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Supports JPG, PNG, PDF (Max 10MB)
+                </p>
+              </div>
             </div>
           ) : (
             <div className="py-8 space-y-4">

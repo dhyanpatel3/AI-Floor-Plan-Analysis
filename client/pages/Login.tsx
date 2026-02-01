@@ -54,24 +54,30 @@ function Login() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="w-full max-w-md bg-white p-8 rounded shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-        <form onSubmit={onSubmit}>
-          <div className="mb-4">
+    <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 mx-4 transition-all duration-300">
+        <h2 className="text-3xl font-bold mb-8 text-center text-slate-800 dark:text-white tracking-tight">
+          Welcome Back
+        </h2>
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div>
             <label
-              className="block text-gray-700 text-sm font-bold mb-2"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-semibold mb-2"
               htmlFor="email"
             >
-              Email
+              Email Address
             </label>
             <input
               type="email"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="w-full px-4 py-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               id="email"
               name="email"
               value={email}
@@ -80,16 +86,16 @@ function Login() {
               required
             />
           </div>
-          <div className="mb-6">
+          <div>
             <label
-              className="block text-gray-700 text-sm font-bold mb-2"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-semibold mb-2"
               htmlFor="password"
             >
               Password
             </label>
             <input
               type="password"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="w-full px-4 py-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               id="password"
               name="password"
               value={password}
@@ -98,9 +104,9 @@ function Login() {
               required
             />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="pt-2">
             <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-md shadow-indigo-500/10 transition-all duration-200 transform hover:scale-[1.01]"
               type="submit"
             >
               Sign In

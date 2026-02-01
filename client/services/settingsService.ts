@@ -1,7 +1,9 @@
 import axios from "axios";
 import { ProjectSettings } from "../types";
 
-const API_URL = "/api/settings";
+// Use environment variable for host, or fallback to relative path (proxy)
+const BASE_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = `${BASE_URL}/api/settings`;
 
 const fetchSettings = async (token: string) => {
   const config = {
