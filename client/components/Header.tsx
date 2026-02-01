@@ -19,6 +19,7 @@ interface HeaderProps {
   onDownloadPDF?: () => void;
   onSaveProfile?: () => void;
   isSaving?: boolean;
+  isExporting?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onDownloadPDF,
   onSaveProfile,
   isSaving,
+  isExporting,
 }) => {
   const authContext = useContext(AuthContext);
   const { user, logout } = authContext || {};
@@ -74,12 +76,15 @@ export const Header: React.FC<HeaderProps> = ({
           {onDownloadPDF && (
             <button
               onClick={onDownloadPDF}
-              className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2 mr-2"
+              disabled={isExporting}
+              className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2 mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Download Report"
             >
-              <Download className="w-4 h-4" />
+              <Download
+                className={`w-4 h-4 ${isExporting ? "animate-bounce" : ""}`}
+              />
               <span className="text-sm font-medium hidden sm:inline">
-                Export PDF
+                {isExporting ? "Exporting..." : "Export PDF"}
               </span>
             </button>
           )}

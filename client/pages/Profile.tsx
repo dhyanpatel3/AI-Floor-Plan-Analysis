@@ -233,7 +233,7 @@ function Profile() {
       >
         {selectedPlan && (
           <div className="flex flex-col h-[70vh]">
-            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 mb-4 shrink-0">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 shrink-0">
               <div className="flex">
                 <button
                   onClick={() => setActiveTab("overview")}
@@ -275,94 +275,120 @@ function Profile() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
               {activeTab === "overview" && (
                 <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="w-full md:w-1/3">
-                      <img
-                        src={selectedPlan.imageUrl}
-                        alt="Floor Plan"
-                        className="w-full h-auto rounded border shadow-sm"
-                      />
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
-                        Analyzed Floor Plan
-                      </p>
-                    </div>
-
-                    <div className="w-full md:w-2/3 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50 dark:bg-slate-700 p-3 rounded-lg">
-                          <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200 uppercase mb-1">
-                            Total area
-                          </h4>
-                          <p className="text-lg font-bold text-slate-800 dark:text-white">
-                            {selectedPlan.analysisResult.summary.totalAreaSqM.toFixed(
-                              2,
-                            )}{" "}
-                            SqM
-                          </p>
+                  <div className="flex flex-col md:flex-row gap-8">
+                    {/* Left: Image & Badge */}
+                    <div className="w-full md:w-5/12">
+                      <div className="sticky top-0 space-y-3">
+                        <div className="relative rounded-xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                          <img
+                            src={selectedPlan.imageUrl}
+                            alt="Floor Plan"
+                            className="w-full h-auto object-contain max-h-[400px]"
+                          />
                         </div>
-                        <div className="bg-green-50 dark:bg-slate-700 p-3 rounded-lg">
-                          <h4 className="text-xs font-semibold text-green-800 dark:text-green-200 uppercase mb-1">
-                            Wall Length
-                          </h4>
-                          <p className="text-lg font-bold text-slate-800 dark:text-white">
-                            {selectedPlan.analysisResult.summary.totalWallLengthM.toFixed(
-                              2,
-                            )}{" "}
-                            M
+                        <div className="bg-indigo-50 dark:bg-slate-800 rounded-lg p-3 border border-indigo-100 dark:border-slate-700 text-center">
+                          <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold uppercase tracking-wide">
+                            Analyzed Plan
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {new Date(
+                              selectedPlan.createdAt,
+                            ).toLocaleDateString(undefined, {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </p>
                         </div>
                       </div>
+                    </div>
 
-                      <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg">
-                        <h4 className="font-semibold text-slate-800 dark:text-white mb-2">
-                          Detected Elements
-                        </h4>
-                        <div className="flex gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-600 dark:text-slate-300">
-                              Doors:
+                    {/* Right: Detailed Metrics & Summary */}
+                    <div className="w-full md:w-7/12 space-y-6">
+                      {/* Key Metrics Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                            Total Area
+                          </h4>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {selectedPlan.analysisResult.summary.totalAreaSqM.toFixed(
+                              1,
+                            )}
+                            <span className="text-sm font-medium text-slate-500 ml-1">
+                              m²
                             </span>
-                            <span className="font-bold text-slate-900 dark:text-white">
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                          <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                            Wall Length
+                          </h4>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {selectedPlan.analysisResult.summary.totalWallLengthM.toFixed(
+                              1,
+                            )}
+                            <span className="text-sm font-medium text-slate-500 ml-1">
+                              m
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Elements Count */}
+                      <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mr-2"></span>
+                          Detected Structure
+                        </h4>
+                        <div className="flex gap-8">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+                              Doors
+                            </span>
+                            <span className="text-xl font-bold text-slate-900 dark:text-white">
                               {selectedPlan.analysisResult.elements.doors}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-600 dark:text-slate-300">
-                              Windows:
+                          <div className="flex flex-col">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+                              Windows
                             </span>
-                            <span className="font-bold text-slate-900 dark:text-white">
+                            <span className="text-xl font-bold text-slate-900 dark:text-white">
                               {selectedPlan.analysisResult.elements.windows}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
+                              Rooms
+                            </span>
+                            <span className="text-xl font-bold text-slate-900 dark:text-white">
+                              {selectedPlan.analysisResult.rooms.length}
                             </span>
                           </div>
                         </div>
                       </div>
 
+                      {/* Financial Summary */}
                       {selectedPlan.costEstimation &&
                         selectedPlan.costEstimation.totalProjectCost > 0 && (
-                          <div className="bg-orange-50 dark:bg-slate-700 p-4 rounded-lg">
-                            <h4 className="font-semibold text-orange-900 dark:text-orange-200 mb-2">
-                              Cost Estimate Summary
+                          <div className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-6 border-b border-slate-100 dark:border-slate-700 pb-2">
+                              Project Cost Breakdown
                             </h4>
-                            <div className="flex justify-between items-end mb-3">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">
-                                Total Project Cost
-                              </span>
-                              <span className="text-xl font-bold text-slate-900 dark:text-white">
-                                ₹{" "}
-                                {selectedPlan.costEstimation.totalProjectCost.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="space-y-1">
+
+                            <div className="space-y-3 mb-6">
                               {selectedPlan.costEstimation.consolidatedReport.map(
                                 (item, idx) => (
                                   <div
                                     key={idx}
-                                    className="flex justify-between text-sm"
+                                    className="flex justify-between items-center text-sm group"
                                   >
-                                    <span className="text-slate-600 dark:text-slate-300">
+                                    <span className="text-slate-600 dark:text-slate-300 font-medium">
                                       {item.category}
                                     </span>
                                     <span className="font-medium text-slate-900 dark:text-white">
@@ -371,6 +397,16 @@ function Profile() {
                                   </div>
                                 ),
                               )}
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-end">
+                              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                Total Estimated Cost
+                              </span>
+                              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                                ₹{" "}
+                                {selectedPlan.costEstimation.totalProjectCost.toLocaleString()}
+                              </span>
                             </div>
                           </div>
                         )}

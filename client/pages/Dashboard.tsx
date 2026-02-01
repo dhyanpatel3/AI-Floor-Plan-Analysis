@@ -54,6 +54,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const authContext = React.useContext(AuthContext);
@@ -485,20 +486,31 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     });
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!calibratedAnalysis) return;
 
-    generatePDF({
-      analysis: calibratedAnalysis,
-      consolidatedReport,
-      calculatedQuantities,
-      customQuantities,
-      customRates,
-      totalCost: totalProjectCost,
-      settings,
-      areaUnit,
-      calibrationArea,
-    });
+    setIsExporting(true);
+    // Give UI a moment to update and show loader
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    try {
+      await generatePDF({
+        analysis: calibratedAnalysis,
+        consolidatedReport,
+        calculatedQuantities,
+        customQuantities,
+        customRates,
+        totalCost: totalProjectCost,
+        settings,
+        areaUnit,
+        calibrationArea,
+      });
+    } catch (e) {
+      console.error("PDF Generation failed", e);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Helper for currency
@@ -518,6 +530,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         onDownloadPDF={calibratedAnalysis ? handleDownloadPDF : undefined}
         onSaveProfile={calibratedAnalysis ? handleSaveToProfile : undefined}
         isSaving={isSaving}
+        isExporting={isExporting}
       />
 
       <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
