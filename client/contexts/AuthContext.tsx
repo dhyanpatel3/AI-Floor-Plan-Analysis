@@ -16,6 +16,7 @@ interface AuthContextType {
   message: string;
   register: (user: any) => Promise<void>;
   login: (user: any) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
   reset: () => void;
 }
@@ -76,6 +77,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const googleLogin = async (credential: string) => {
+    setIsLoading(true);
+    try {
+      const data = await authService.googleLogin(credential);
+      setUser(data);
+      setIsSuccess(true);
+    } catch (error: any) {
+      setIsError(true);
+      setMessage(
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+          error.message ||
+          error.toString(),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -98,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         message,
         register,
         login,
+        googleLogin,
         logout,
         reset,
       }}

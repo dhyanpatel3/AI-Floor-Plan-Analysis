@@ -7,7 +7,6 @@ import { AnalysisProvider } from "./contexts/AnalysisContext";
 import { Header } from "./components/Header";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import Profile from "./pages/Profile.tsx";
 
 function App() {
@@ -52,14 +51,6 @@ function App() {
                   element={
                     <Layout>
                       <Login />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/signup"
-                  element={
-                    <Layout>
-                      <Signup />
                     </Layout>
                   }
                 />

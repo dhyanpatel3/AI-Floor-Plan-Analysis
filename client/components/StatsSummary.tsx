@@ -6,19 +6,14 @@ interface StatsSummaryProps {
   analysis: AnalysisResult;
   totalCost: number;
   formatCurrency: (val: number) => string;
-  areaUnit: "sqm" | "sqft";
 }
 
 export const StatsSummary: React.FC<StatsSummaryProps> = ({
   analysis,
   totalCost,
   formatCurrency,
-  areaUnit,
 }) => {
-  const displayArea =
-    areaUnit === "sqft"
-      ? analysis.summary.totalAreaSqM * 10.7639
-      : analysis.summary.totalAreaSqM;
+  const displayArea = analysis.summary.totalAreaSqFt;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
@@ -35,7 +30,7 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({
               maximumFractionDigits: 1,
             })}
             <span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-1">
-              {areaUnit === "sqft" ? "ft²" : "m²"}
+              ft²
             </span>
           </div>
         </div>

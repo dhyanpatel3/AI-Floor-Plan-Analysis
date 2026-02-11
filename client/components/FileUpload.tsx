@@ -60,20 +60,34 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+    <div
+      className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ${
+        variant === "default" ? "h-full flex flex-col" : ""
+      }`}
+    >
+      <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
         <h2 className="text-base font-semibold text-slate-800 dark:text-white flex items-center">
           <Upload className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
           Upload Plan
         </h2>
       </div>
 
-      <div className="p-6">
+      <div
+        className={`p-4 ${
+          variant === "default" ? "flex-1 min-h-0 flex flex-col" : ""
+        }`}
+      >
         <div
-          className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+          className={`relative border-2 border-dashed rounded-xl ${
+            previewUrl ? "p-4" : "p-8"
+          } text-center transition-all duration-200 ${
             previewUrl
               ? "border-indigo-200 dark:border-indigo-700 bg-indigo-50/30 dark:bg-indigo-900/20"
               : "border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-700/30"
+          } ${
+            variant === "default"
+              ? "flex-1 min-h-0 flex flex-col justify-center"
+              : ""
           }`}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
@@ -88,7 +102,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           />
 
           {previewUrl ? (
-            <div className="relative z-20">
+            <div
+              className={`relative z-20 ${
+                variant === "default" ? "h-full flex flex-col min-h-0" : ""
+              }`}
+            >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -113,13 +131,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   </span>
                 </div>
               ) : (
-                <div className="rounded-lg overflow-hidden shadow-sm bg-white dark:bg-slate-800 p-2">
+                <div
+                  className={`rounded-lg overflow-hidden shadow-sm bg-white dark:bg-slate-800 p-2 ${
+                    variant === "default"
+                      ? "flex-1 min-h-0 flex flex-col justify-center"
+                      : ""
+                  }`}
+                >
                   <img
                     src={previewUrl}
                     alt="Preview"
-                    className="max-h-64 mx-auto rounded-md object-contain"
+                    className={`mx-auto rounded-md object-contain ${
+                      variant === "default" ? "max-h-full" : "max-h-40"
+                    }`}
                   />
-                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate">
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate shrink-0">
                     {file?.name}
                   </div>
                 </div>
@@ -173,7 +199,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           </div>
         )}
 
-        {file && !isAnalyzing && (
+        {file && !isAnalyzing && variant === "hero" && (
           <button
             onClick={onAnalyze}
             className="mt-6 w-full flex items-center justify-center py-3 px-4 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-lg font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-all transform active:scale-[0.98]"

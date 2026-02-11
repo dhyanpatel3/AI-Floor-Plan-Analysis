@@ -31,10 +31,39 @@ const logout = () => {
   localStorage.removeItem("user");
 };
 
+// Google Login
+const googleLogin = async (credential: string) => {
+  const response = await axios.post(API_URL + "google", { credential });
+
+  if (response.data) {
+    localStorage.setItem("user", JSON.stringify(response.data));
+  }
+
+  return response.data;
+};
+
+// Forgot Password
+const forgotPassword = async (email: string) => {
+  const response = await axios.post(API_URL + "forgotpassword", { email });
+  return response.data;
+};
+
+// Reset Password
+const resetPassword = async (password: string, token: string) => {
+  const response = await axios.put(API_URL + `resetpassword/${token}`, {
+    password,
+  });
+
+  return response.data;
+};
+
 const authService = {
   register,
   logout,
   login,
+  googleLogin,
+  forgotPassword,
+  resetPassword,
 };
 
 export default authService;

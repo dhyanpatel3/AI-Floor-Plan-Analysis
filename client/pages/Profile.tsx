@@ -2,11 +2,11 @@ import React, { useContext, useEffect, useState } from "react";
 import AuthContext from "../contexts/AuthContext";
 import floorPlanService from "../services/floorPlanService";
 import { toast } from "react-toastify";
-import { Eye, Trash2, Download, ArrowLeft } from "lucide-react";
+import { Eye, Trash2, Download, ArrowLeft, Edit2, Save, X } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { AnalysisResult, ProjectSettings } from "../types";
 import { generatePDF } from "../utils/pdfGenerator";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface FloorPlanRecord {
   _id: string;
@@ -49,6 +49,7 @@ interface FloorPlanRecord {
 
 function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const authContext = useContext(AuthContext);
 
   if (!authContext) {
@@ -63,9 +64,17 @@ function Profile() {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "boq">(
     "overview",
   );
+
+  const handleViewDetails = (plan: FloorPlanRecord) => {
+    setSelectedPlan(plan);
+    setActiveTab("overview");
+    setIsModalOpen(true);
+    setIsEditing(false);
+  };
 
   useEffect(() => {
     const fetchFloorPlans = async () => {
@@ -73,6 +82,23 @@ function Profile() {
         try {
           const data = await floorPlanService.getUserFloorPlans(user.token);
           setFloorPlans(data);
+
+          // Check for auto-open request
+          const state = location.state as { openPlanId?: string };
+          if (state?.openPlanId) {
+            const targetPlan = data.find(
+              (p: FloorPlanRecord) => p._id === state.openPlanId,
+            );
+            if (targetPlan) {
+              // Clear state so it doesn't reopen on refresh
+              window.history.replaceState({}, document.title);
+              // "View Details" logic inline
+              setSelectedPlan(targetPlan);
+              setActiveTab("overview");
+              setIsModalOpen(true);
+              setIsEditing(false);
+            }
+          }
         } catch (error: any) {
           // toast.error(error.message || "Failed to load floor plans");
         } finally {
@@ -84,7 +110,7 @@ function Profile() {
     };
 
     fetchFloorPlans();
-  }, [user]);
+  }, [user, location.state]);
 
   const handleDelete = async (id: string) => {
     if (
@@ -102,10 +128,184 @@ function Profile() {
     }
   };
 
-  const handleViewDetails = (plan: FloorPlanRecord) => {
-    setSelectedPlan(plan);
-    setActiveTab("overview");
+  const handleEditPlan = (plan: FloorPlanRecord) => {
+    setSelectedPlan(JSON.parse(JSON.stringify(plan)));
+    setActiveTab("boq");
     setIsModalOpen(true);
+    setIsEditing(true);
+  };
+
+  const handleUpdateBOQ = (
+    id: string,
+    field: "quantity" | "unitRate",
+    value: number,
+  ) => {
+    if (
+      !selectedPlan ||
+      !selectedPlan.costEstimation ||
+      !selectedPlan.costEstimation.fullBOQ
+    )
+      return;
+
+    const updatedPlan = { ...selectedPlan };
+    const boq = [...updatedPlan.costEstimation.fullBOQ!];
+
+    // Find the item
+    const itemIndex = boq.findIndex((item) => item.id === id);
+    if (itemIndex === -1) return;
+
+    // Update item
+    boq[itemIndex] = { ...boq[itemIndex], [field]: value };
+
+    // Recalculate total cost for item
+    boq[itemIndex].totalCost =
+      boq[itemIndex].quantity * boq[itemIndex].unitRate;
+
+    // Update BOQ in plan
+    updatedPlan.costEstimation.fullBOQ = boq;
+
+    // Recalculate Global Total
+    updatedPlan.costEstimation.totalProjectCost = boq.reduce(
+      (sum, item) => sum + item.totalCost,
+      0,
+    );
+
+    // Recalculate Consolidated Report
+    const categoryMap = new Map<string, number>();
+    boq.forEach((item) => {
+      const current = categoryMap.get(item.category) || 0;
+      categoryMap.set(item.category, current + item.totalCost);
+    });
+
+    updatedPlan.costEstimation.consolidatedReport = Array.from(
+      categoryMap.entries(),
+    ).map(([category, cost]) => ({
+      category,
+      cost,
+    }));
+
+    // Update Room Costs if possible?
+    // This is harder because fullBOQ is flattened.
+    // If we want to strictly keep consistency, we might need to update roomCosts too.
+    // But roomCosts structure relies on knowing which room a material belongs to.
+    // fullBOQ usually aggregates same materials?
+    // If fullBOQ aggregates, then we can't easily map back to rooms unless fullBOQ items have room reference.
+    // Let's check if BOQ items have roomIds. The interface doesn't show it.
+    // If fullBOQ is aggregated (e.g. Total Bricks), changing it here breaks the link to Room Costs.
+    // For now, we will update BOQ totals and Project Totals. Room Costs might fall out of sync.
+    // Ideally, we should warn user or just accept that "Edit BOQ" overrides the granular breakdown.
+
+    setSelectedPlan(updatedPlan);
+  };
+
+  const handleUpdateRoomMaterial = (
+    roomIndex: number,
+    materialIndex: number,
+    field: "quantity" | "unitRate",
+    value: number,
+  ) => {
+    if (
+      !selectedPlan ||
+      !selectedPlan.costEstimation ||
+      !selectedPlan.costEstimation.roomCosts
+    )
+      return;
+
+    const updatedPlan = JSON.parse(JSON.stringify(selectedPlan));
+    const room = updatedPlan.costEstimation.roomCosts[roomIndex];
+    const material = room.materials[materialIndex];
+
+    // Update field
+    material[field] = value;
+    // Recalculate material cost
+    material.totalCost = material.quantity * material.unitRate;
+
+    // Recalculate Room Total
+    room.totalCost = room.materials.reduce(
+      (sum: number, m: any) => sum + m.totalCost,
+      0,
+    );
+
+    // Sync with BOQ and Totals
+    // 1. Map existing categories from BOQ to IDs
+    const categoryMap = new Map<string, string>(); // ID -> Category
+    if (updatedPlan.costEstimation.fullBOQ) {
+      updatedPlan.costEstimation.fullBOQ.forEach((item: any) => {
+        categoryMap.set(item.id, item.category);
+      });
+    }
+
+    // 2. Aggregate from all rooms
+    const aggMap = new Map<string, any>(); // ID -> Combined Item
+
+    updatedPlan.costEstimation.roomCosts.forEach((r: any) => {
+      r.materials.forEach((m: any) => {
+        if (!aggMap.has(m.id)) {
+          aggMap.set(m.id, {
+            id: m.id,
+            name: m.name,
+            unit: m.unit,
+            quantity: 0,
+            totalCost: 0,
+            category: categoryMap.get(m.id) || "Uncategorized", // Preserve category
+          });
+        }
+        const item = aggMap.get(m.id);
+        item.quantity += m.quantity;
+        item.totalCost += m.totalCost;
+      });
+    });
+
+    // 3. Convert map back to BOQ array
+    const newBOQ = Array.from(aggMap.values()).map((item) => ({
+      ...item,
+      unitRate: item.quantity > 0 ? item.totalCost / item.quantity : 0,
+    }));
+
+    updatedPlan.costEstimation.fullBOQ = newBOQ;
+
+    // 4. Recalculate Project Total
+    updatedPlan.costEstimation.totalProjectCost = newBOQ.reduce(
+      (sum: number, item: any) => sum + item.totalCost,
+      0,
+    );
+
+    // 5. Recalculate Consolidated Report
+    const reportMap = new Map<string, number>();
+    newBOQ.forEach((item: any) => {
+      const current = reportMap.get(item.category) || 0;
+      reportMap.set(item.category, current + item.totalCost);
+    });
+    updatedPlan.costEstimation.consolidatedReport = Array.from(
+      reportMap.entries(),
+    ).map(([category, cost]) => ({
+      category,
+      cost,
+    }));
+
+    setSelectedPlan(updatedPlan);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!selectedPlan || !user) return;
+
+    try {
+      await floorPlanService.updateFloorPlan(
+        selectedPlan._id,
+        selectedPlan.costEstimation,
+        user.token,
+      );
+
+      // Update the list of plans
+      setFloorPlans((prev) =>
+        prev.map((p) => (p._id === selectedPlan._id ? selectedPlan : p)),
+      );
+
+      toast.success("Floor plan updated successfully");
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update floor plan");
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -131,10 +331,10 @@ function Profile() {
       totalCost: totalProjectCost || 0,
       settings: settings || {
         currency: "INR",
-        wallHeightM: 3.0,
+        wallHeightFt: 10,
         brickSize: "standard",
       },
-      areaUnit: areaUnit || "sqm",
+      areaUnit: areaUnit || "sqft",
       calibrationArea: calibrationArea || "",
     });
   };
@@ -191,13 +391,15 @@ function Profile() {
                     <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
                       Area:{" "}
                       <span className="font-medium text-slate-900 dark:text-white">
-                        {plan.analysisResult.summary?.totalAreaSqM?.toFixed(
-                          1,
-                        ) || "N/A"}{" "}
-                        SqM
+                        {(
+                          plan.analysisResult.summary?.totalAreaSqFt ||
+                          (plan.analysisResult.summary?.totalAreaSqM
+                            ? plan.analysisResult.summary.totalAreaSqM * 10.7639
+                            : 0)
+                        ).toFixed(1)}{" "}
+                        ft²
                       </span>
                     </p>
-
                     <div className="mt-auto flex gap-2">
                       <button
                         onClick={() => handleViewDetails(plan)}
@@ -205,6 +407,13 @@ function Profile() {
                       >
                         <Eye size={16} />
                         View
+                      </button>
+                      <button
+                        onClick={() => handleEditPlan(plan)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                      >
+                        <Edit2 size={16} />
+                        Edit
                       </button>
                       <button
                         onClick={() => handleDelete(plan._id)}
@@ -316,11 +525,16 @@ function Profile() {
                             Total Area
                           </h4>
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {selectedPlan.analysisResult.summary.totalAreaSqM.toFixed(
-                              1,
-                            )}
+                            {(
+                              selectedPlan.analysisResult.summary
+                                .totalAreaSqFt ||
+                              (selectedPlan.analysisResult.summary.totalAreaSqM
+                                ? selectedPlan.analysisResult.summary
+                                    .totalAreaSqM * 10.7639
+                                : 0)
+                            ).toFixed(1)}
                             <span className="text-sm font-medium text-slate-500 ml-1">
-                              m²
+                              ft²
                             </span>
                           </div>
                         </div>
@@ -329,11 +543,17 @@ function Profile() {
                             Wall Length
                           </h4>
                           <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {selectedPlan.analysisResult.summary.totalWallLengthM.toFixed(
-                              1,
-                            )}
+                            {(
+                              selectedPlan.analysisResult.summary
+                                .totalWallLengthFt ||
+                              (selectedPlan.analysisResult.summary
+                                .totalWallLengthM
+                                ? selectedPlan.analysisResult.summary
+                                    .totalWallLengthM * 3.28084
+                                : 0)
+                            ).toFixed(1)}
                             <span className="text-sm font-medium text-slate-500 ml-1">
-                              m
+                              ft
                             </span>
                           </div>
                         </div>
@@ -417,9 +637,47 @@ function Profile() {
 
               {activeTab === "rooms" && (
                 <div>
-                  <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-3">
-                    Room Breakdown
-                  </h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">
+                      Room Breakdown
+                    </h4>
+                    {!isEditing ? (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 transition-colors dark:bg-slate-700 dark:text-indigo-400 dark:border-slate-600 dark:hover:bg-slate-600"
+                      >
+                        <Edit2 size={14} />
+                        Edit Rooms
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            // Cancel edits - revert to original from floorPlans list
+                            const original = floorPlans.find(
+                              (p) => p._id === selectedPlan?._id,
+                            );
+                            if (original)
+                              setSelectedPlan(
+                                JSON.parse(JSON.stringify(original)),
+                              );
+                            setIsEditing(false);
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700"
+                        >
+                          <X size={14} />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveChanges}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors shadow-sm"
+                        >
+                          <Save size={14} />
+                          Save Changes
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {selectedPlan.costEstimation?.roomCosts ? (
                     <div className="space-y-6">
                       {selectedPlan.costEstimation.roomCosts.map(
@@ -440,10 +698,16 @@ function Profile() {
                                         .type
                                     }{" "}
                                     •{" "}
-                                    {selectedPlan.analysisResult.rooms[
-                                      idx
-                                    ].areaSqM.toFixed(1)}{" "}
-                                    m²
+                                    {(
+                                      selectedPlan.analysisResult.rooms[idx]
+                                        .areaSqFt ||
+                                      (selectedPlan.analysisResult.rooms[idx]
+                                        .areaSqM
+                                        ? selectedPlan.analysisResult.rooms[idx]
+                                            .areaSqM * 10.7639
+                                        : 0)
+                                    ).toFixed(1)}{" "}
+                                    ft²
                                   </p>
                                 )}
                               </div>
@@ -483,10 +747,50 @@ function Profile() {
                                           {mat.name}
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                          {mat.quantity.toFixed(1)} {mat.unit}
+                                          {isEditing ? (
+                                            <input
+                                              type="number"
+                                              value={mat.quantity}
+                                              onChange={(e) =>
+                                                handleUpdateRoomMaterial(
+                                                  idx,
+                                                  mIdx,
+                                                  "quantity",
+                                                  parseFloat(e.target.value) ||
+                                                    0,
+                                                )
+                                              }
+                                              className="w-20 px-1 py-0.5 text-right text-sm border rounded dark:bg-slate-700 dark:border-slate-600"
+                                              step="0.01"
+                                            />
+                                          ) : (
+                                            `${mat.quantity.toFixed(1)}`
+                                          )}{" "}
+                                          {mat.unit}
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                          ₹{mat.unitRate}
+                                          {isEditing ? (
+                                            <div className="flex items-center justify-end gap-1">
+                                              <span className="text-xs">₹</span>
+                                              <input
+                                                type="number"
+                                                value={mat.unitRate}
+                                                onChange={(e) =>
+                                                  handleUpdateRoomMaterial(
+                                                    idx,
+                                                    mIdx,
+                                                    "unitRate",
+                                                    parseFloat(
+                                                      e.target.value,
+                                                    ) || 0,
+                                                  )
+                                                }
+                                                className="w-20 px-1 py-0.5 text-right text-sm border rounded dark:bg-slate-700 dark:border-slate-600"
+                                              />
+                                            </div>
+                                          ) : (
+                                            `₹${mat.unitRate}`
+                                          )}
                                         </td>
                                         <td className="px-3 py-2 text-right">
                                           ₹
@@ -511,9 +815,11 @@ function Profile() {
                           <tr>
                             <th className="px-4 py-3">Room Name</th>
                             <th className="px-4 py-3">Type</th>
-                            <th className="px-4 py-3 text-right">Area (SqM)</th>
                             <th className="px-4 py-3 text-right">
-                              Perimeter (M)
+                              Area (SqFt)
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              Perimeter (Ft)
                             </th>
                           </tr>
                         </thead>
@@ -531,12 +837,17 @@ function Profile() {
                                   {room.type}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  {room.areaSqM.toFixed(2)}
+                                  {(
+                                    room.areaSqFt ||
+                                    (room.areaSqM ? room.areaSqM * 10.7639 : 0)
+                                  ).toFixed(2)}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  {room.perimeterM
-                                    ? room.perimeterM.toFixed(2)
-                                    : "N/A"}
+                                  {room.perimeterFt
+                                    ? room.perimeterFt.toFixed(2)
+                                    : room.perimeterM
+                                      ? (room.perimeterM * 3.28084).toFixed(2)
+                                      : "N/A"}
                                 </td>
                               </tr>
                             ),
@@ -553,9 +864,47 @@ function Profile() {
 
               {activeTab === "boq" && (
                 <div>
-                  <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-3">
-                    Bill of Quantities (BOQ)
-                  </h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">
+                      Bill of Quantities (BOQ)
+                    </h4>
+                    {!isEditing ? (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 transition-colors dark:bg-slate-700 dark:text-indigo-400 dark:border-slate-600 dark:hover:bg-slate-600"
+                      >
+                        <Edit2 size={14} />
+                        Edit BOQ
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            // Cancel edits - revert to original from floorPlans list
+                            const original = floorPlans.find(
+                              (p) => p._id === selectedPlan?._id,
+                            );
+                            if (original)
+                              setSelectedPlan(
+                                JSON.parse(JSON.stringify(original)),
+                              );
+                            setIsEditing(false);
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700"
+                        >
+                          <X size={14} />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveChanges}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors shadow-sm"
+                        >
+                          <Save size={14} />
+                          Save Changes
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {selectedPlan.costEstimation?.fullBOQ ? (
                     <div className="overflow-x-auto border rounded-lg">
                       <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300">
@@ -569,13 +918,13 @@ function Profile() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedPlan.costEstimation.fullBOQ
+                          {[...selectedPlan.costEstimation.fullBOQ]
                             .sort((a, b) =>
                               a.category.localeCompare(b.category),
                             )
-                            .map((item, idx) => (
+                            .map((item) => (
                               <tr
-                                key={idx}
+                                key={item.id} // Use ID as key
                                 className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                               >
                                 <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
@@ -583,10 +932,45 @@ function Profile() {
                                 </td>
                                 <td className="px-4 py-3">{item.name}</td>
                                 <td className="px-4 py-3 text-right">
-                                  {item.quantity.toFixed(2)} {item.unit}
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      value={item.quantity}
+                                      onChange={(e) =>
+                                        handleUpdateBOQ(
+                                          item.id,
+                                          "quantity",
+                                          parseFloat(e.target.value) || 0,
+                                        )
+                                      }
+                                      className="w-24 px-2 py-1 text-right text-sm border rounded dark:bg-slate-700 dark:border-slate-600"
+                                      step="0.01"
+                                    />
+                                  ) : (
+                                    `${item.quantity.toFixed(2)}`
+                                  )}{" "}
+                                  <span className="text-xs">{item.unit}</span>
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  ₹ {item.unitRate.toLocaleString()}
+                                  {isEditing ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <span className="text-xs">₹</span>
+                                      <input
+                                        type="number"
+                                        value={item.unitRate}
+                                        onChange={(e) =>
+                                          handleUpdateBOQ(
+                                            item.id,
+                                            "unitRate",
+                                            parseFloat(e.target.value) || 0,
+                                          )
+                                        }
+                                        className="w-24 px-2 py-1 text-right text-sm border rounded dark:bg-slate-700 dark:border-slate-600"
+                                      />
+                                    </div>
+                                  ) : (
+                                    `₹ ${item.unitRate.toLocaleString()}`
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 text-right font-medium">
                                   ₹{" "}

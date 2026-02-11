@@ -72,13 +72,13 @@ app.post("/api/analyze", async (req, res) => {
       Act as a professional Quantity Surveyor.
       
       Extract the following structural data:
-      1. Total Built-up Area (Sq Meters).
-      2. Total Wall Length (linear meters).
-      3. DETAILED ROOM LIST: For each room, identify its Name, Type, Area (SqM), and PERIMETER (Linear Meters). 
+      1. Total Built-up Area (Sq Feet).
+      2. Total Wall Length (linear feet).
+      3. DETAILED ROOM LIST: For each room, identify its Name, Type, Area (SqFt), and PERIMETER (Linear Feet). 
          - Accurately estimate the perimeter if not explicitly labeled.
          - Classify type strictly as: 'Bedroom', 'Kitchen', 'Bathroom', 'Living', 'Dining', 'Corridor', or 'Other'.
       4. Count visible Doors and Windows.
-      5. Est. Wall Thickness (usually 0.15m - 0.23m).
+      5. Est. Wall Thickness (usually 0.5ft - 0.75ft).
 
       Return ONLY JSON matching the schema.
     `;
@@ -109,14 +109,14 @@ app.post("/api/analyze", async (req, res) => {
                 summary: {
                   type: Type.OBJECT,
                   properties: {
-                    totalAreaSqM: { type: Type.NUMBER },
-                    totalWallLengthM: { type: Type.NUMBER },
-                    wallThicknessM: { type: Type.NUMBER },
+                    totalAreaSqFt: { type: Type.NUMBER },
+                    totalWallLengthFt: { type: Type.NUMBER },
+                    wallThicknessFt: { type: Type.NUMBER },
                   },
                   required: [
-                    "totalAreaSqM",
-                    "totalWallLengthM",
-                    "wallThicknessM",
+                    "totalAreaSqFt",
+                    "totalWallLengthFt",
+                    "wallThicknessFt",
                   ],
                 },
                 rooms: {
@@ -125,8 +125,8 @@ app.post("/api/analyze", async (req, res) => {
                     type: Type.OBJECT,
                     properties: {
                       name: { type: Type.STRING },
-                      areaSqM: { type: Type.NUMBER },
-                      perimeterM: { type: Type.NUMBER },
+                      areaSqFt: { type: Type.NUMBER },
+                      perimeterFt: { type: Type.NUMBER },
                       type: {
                         type: Type.STRING,
                         enum: [
@@ -140,7 +140,7 @@ app.post("/api/analyze", async (req, res) => {
                         ],
                       },
                     },
-                    required: ["name", "areaSqM", "perimeterM", "type"],
+                    required: ["name", "areaSqFt", "perimeterFt", "type"],
                   },
                 },
                 elements: {

@@ -1,14 +1,28 @@
 export interface AnalysisResult {
   summary: {
-    totalAreaSqM: number;
-    totalWallLengthM: number;
-    wallThicknessM: number;
+    totalAreaSqFt: number;
+    totalWallLengthFt: number;
+    wallThicknessFt: number;
+    // Legacy fields
+    totalAreaSqM?: number;
+    totalWallLengthM?: number;
+    wallThicknessM?: number;
   };
   rooms: Array<{
     name: string;
-    areaSqM: number;
-    perimeterM: number; // Added perimeter for accurate wall calculations
-    type: 'Bedroom' | 'Kitchen' | 'Bathroom' | 'Living' | 'Dining' | 'Corridor' | 'Other';
+    areaSqFt: number;
+    perimeterFt: number; // Added perimeter for accurate wall calculations
+    type:
+      | "Bedroom"
+      | "Kitchen"
+      | "Bathroom"
+      | "Living"
+      | "Dining"
+      | "Corridor"
+      | "Other";
+    // Legacy fields
+    areaSqM?: number;
+    perimeterM?: number;
   }>;
   elements: {
     doors: number;
@@ -18,7 +32,12 @@ export interface AnalysisResult {
 
 export interface MaterialCost {
   id: string;
-  category: 'Structure' | 'Finishing' | 'Reinforcement' | 'Services' | 'Interiors';
+  category:
+    | "Structure"
+    | "Finishing"
+    | "Reinforcement"
+    | "Services"
+    | "Interiors";
   name: string;
   unit: string;
   quantity: number;
@@ -34,6 +53,6 @@ export interface RoomCost {
 
 export interface ProjectSettings {
   currency: string;
-  wallHeightM: number;
-  brickSize: 'standard' | 'modular';
+  wallHeightFt: number;
+  brickSize: "standard" | "modular";
 }

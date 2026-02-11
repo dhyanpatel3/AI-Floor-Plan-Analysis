@@ -5,7 +5,10 @@ import {
   calculateMaterials,
   calculateRoomMaterials,
 } from "../utils/calculationEngine";
-import { getMaterialDefaultRate } from "../constants/materials";
+import {
+  getMaterialDefaultRate,
+  MATERIAL_CATALOG,
+} from "../constants/materials";
 import { generatePDF } from "../utils/pdfGenerator";
 
 // Components
@@ -15,12 +18,23 @@ import { CalibrationPanel } from "../components/CalibrationPanel";
 import { StatsSummary } from "../components/StatsSummary";
 import { ResultsDashboard } from "../components/ResultsDashboard";
 import { Modal } from "../components/Modal";
-import { BarChart3, Home, List, Save } from "lucide-react";
+import {
+  BarChart3,
+  Home,
+  List,
+  Save,
+  Ruler,
+  Plus,
+  ArrowRight,
+  Clock,
+  LayoutDashboard,
+} from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import floorPlanService from "../services/floorPlanService";
 import settingsService from "../services/settingsService";
 import { useAnalysis } from "../contexts/AnalysisContext";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardProps {
   isDarkMode: boolean;
@@ -28,6 +42,7 @@ interface DashboardProps {
 }
 
 function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
+  const navigate = useNavigate();
   // Global Analysis State
   const {
     file,
@@ -57,10 +72,37 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Home Dashboard State
+  const [recentPlans, setRecentPlans] = useState<any[]>([]);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const [showUpload, setShowUpload] = useState(false);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(true);
+
   const authContext = React.useContext(AuthContext);
   const { user } = authContext || {};
 
-  // Fetch settings on load only if no active analysis session
+  // Fetch recent plans
+  React.useEffect(() => {
+    // Only fetch if we are on the home view (no upload active, no analysis data)
+    if (showUpload || rawAnalysis) return;
+
+    const fetchRecent = async () => {
+      if (user?.token) {
+        try {
+          const plans = await floorPlanService.getUserFloorPlans(user.token);
+          setTotalProjects(plans.length);
+          setRecentPlans(plans.slice(0, 3));
+        } catch (e) {
+          console.error("Failed to fetch recent plans", e);
+        } finally {
+          setIsLoadingRecent(false);
+        }
+      } else {
+        setIsLoadingRecent(false);
+      }
+    };
+    fetchRecent();
+  }, [user, showUpload, rawAnalysis]);
   React.useEffect(() => {
     // If we already have an active analysis or file loaded, don't overwrite current session settings with DB defaults
     if (rawAnalysis || file) return;
@@ -75,8 +117,17 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
               setSettings((prev) => ({ ...prev, ...res.projectSettings }));
             }
             if (res.customRates) {
-              // Convert Map/Object to strict Record<string, number>
-              setCustomRates(res.customRates);
+              // Convert Map/Object to strict Record<string, number> and Clean defaults
+              const cleanRates: Record<string, number> = {};
+              Object.entries(res.customRates).forEach(([key, val]) => {
+                const numVal = Number(val);
+                // Filter out 0s (treat as unset) AND system defaults
+                const defaultRate = getMaterialDefaultRate(key);
+                if (numVal > 0 && numVal !== defaultRate) {
+                  cleanRates[key] = numVal;
+                }
+              });
+              setCustomRates(cleanRates);
             }
             if (res.customQuantities) {
               setCustomQuantities(res.customQuantities);
@@ -104,25 +155,27 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     if (!calibrationArea || isNaN(inputArea) || inputArea <= 0)
       return rawAnalysis;
 
-    const userAreaSqM = areaUnit === "sqft" ? inputArea / 10.7639 : inputArea;
+    const userAreaSqFt = inputArea; // Always Ft
 
-    const scaleFactor = Math.sqrt(
-      userAreaSqM / rawAnalysis.summary.totalAreaSqM,
-    );
+    // Handle case where rawAnalysis might be old format (optional safety or just assume new)
+    // Assuming new format from server for now
+    const rawTotalArea = rawAnalysis.summary.totalAreaSqFt || 1000;
+
+    const scaleFactor = Math.sqrt(userAreaSqFt / rawTotalArea);
     return {
       ...rawAnalysis,
       summary: {
-        totalAreaSqM: userAreaSqM,
-        totalWallLengthM: rawAnalysis.summary.totalWallLengthM * scaleFactor,
-        wallThicknessM: rawAnalysis.summary.wallThicknessM,
+        totalAreaSqFt: userAreaSqFt,
+        totalWallLengthFt: rawAnalysis.summary.totalWallLengthFt * scaleFactor,
+        wallThicknessFt: rawAnalysis.summary.wallThicknessFt,
       },
       rooms: rawAnalysis.rooms.map((r) => ({
         ...r,
-        areaSqM: r.areaSqM * (scaleFactor * scaleFactor),
-        perimeterM: (r.perimeterM || Math.sqrt(r.areaSqM) * 4) * scaleFactor,
+        areaSqFt: r.areaSqFt * (scaleFactor * scaleFactor),
+        perimeterFt: (r.perimeterFt || Math.sqrt(r.areaSqFt) * 4) * scaleFactor,
       })),
     };
-  }, [rawAnalysis, calibrationArea, areaUnit]);
+  }, [rawAnalysis, calibrationArea]);
 
   // Derived State: Base Global Structure Costs (Scientific)
   const baseStructureCosts = useMemo<MaterialCost[]>(() => {
@@ -305,6 +358,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         customRates,
         customQuantities,
       });
+
       toast.success("Settings saved successfully!");
       setIsSettingsOpen(false);
     } catch (err: any) {
@@ -426,7 +480,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       customQuantities,
       settings,
       calibrationArea,
-      areaUnit,
+      // areaUnit removed
       calculatedQuantities,
       baseStructureCosts,
       scalingFactors,
@@ -457,32 +511,39 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     setPreviewUrl(null);
     setRawAnalysis(null);
     setError(null);
+    setShowUpload(false);
   };
 
-  const handleUnitChange = (newUnit: "sqm" | "sqft") => {
-    const currentVal = parseFloat(calibrationArea);
-    if (!isNaN(currentVal) && calibrationArea) {
-      if (newUnit === "sqft" && areaUnit === "sqm") {
-        setCalibrationArea((currentVal * 10.7639).toFixed(1));
-      } else if (newUnit === "sqm" && areaUnit === "sqft") {
-        setCalibrationArea((currentVal / 10.7639).toFixed(1));
+  const handleLoadPlan = (plan: any) => {
+    setPreviewUrl(plan.imageUrl);
+    // Setting rawAnalysis triggers the view switch because calibratedAnalysis becomes derived
+    setRawAnalysis(plan.analysisResult);
+
+    // Restore saved context
+    if (plan.costEstimation) {
+      if (plan.costEstimation.calibrationArea) {
+        setCalibrationArea(plan.costEstimation.calibrationArea);
+      }
+      if (plan.costEstimation.settings) {
+        setSettings((prev) => ({ ...prev, ...plan.costEstimation.settings }));
+      }
+      if (plan.costEstimation.customRates) {
+        setCustomRates(plan.costEstimation.customRates);
+      }
+      if (plan.costEstimation.customQuantities) {
+        setCustomQuantities(plan.costEstimation.customQuantities);
       }
     }
-    setAreaUnit(newUnit);
   };
 
   const handleRateUpdate = (id: string, newRate: number) => {
-    setCustomRates((prev) => ({ ...prev, [id]: newRate }));
-  };
-
-  const handleQuantityUpdate = (id: string, newQty: number | undefined) => {
-    setCustomQuantities((prev) => {
-      if (newQty === undefined) {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+    setCustomRates((prev) => {
+      // If rate is 0, remove it from overrides to let system default apply
+      if (newRate === 0) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
       }
-      return { ...prev, [id]: newQty };
+      return { ...prev, [id]: newRate };
     });
   };
 
@@ -491,7 +552,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
 
     setIsExporting(true);
     // Give UI a moment to update and show loader
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(() => resolve(null), 100));
 
     try {
       await generatePDF({
@@ -502,7 +563,6 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         customRates,
         totalCost: totalProjectCost,
         settings,
-        areaUnit,
         calibrationArea,
       });
     } catch (e) {
@@ -513,13 +573,14 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     }
   };
 
-  // Helper for currency
-  const formatINR = (val: number) =>
-    new Intl.NumberFormat("en-IN", {
+  // Helper
+  const formatINR = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: settings.currency,
+      currency: "INR",
       maximumFractionDigits: 0,
-    }).format(val);
+    }).format(amount);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 transition-colors duration-300 overflow-hidden">
@@ -535,22 +596,207 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
 
       <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
         {!calibratedAnalysis ? (
-          <div className="h-full flex flex-col items-center justify-center animate-fade-in transition-all duration-300 pointer-events-auto">
-            <div className="w-full max-w-3xl mx-auto px-4">
-              <div className="transform transition-all hover:scale-[1.01] duration-300 shadow-xl rounded-xl">
-                <FileUpload
-                  file={file}
-                  previewUrl={previewUrl}
-                  isAnalyzing={isAnalyzing}
-                  error={error}
-                  onFileChange={handleFileChange}
-                  onAnalyze={handleAnalyze}
-                  onClear={clearFile}
-                  variant="hero"
-                />
+          user && !showUpload ? (
+            // HOME DASHBOARD VIEW
+            <div className="h-full flex flex-col animate-fade-in overflow-y-auto custom-scrollbar pb-10">
+              {/* Welcome Section */}
+              <div className="mb-10 mt-4">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                  Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+                  !
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
+                  Manage your construction estimates or start a new detailed
+                  analysis from your floor plans.
+                </p>
+              </div>
+
+              {/* Quick Actions Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                {/* Create New Card */}
+                <div
+                  onClick={() => setShowUpload(true)}
+                  className="group cursor-pointer bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Plus size={120} />
+                  </div>
+                  <div className="relative z-10 h-full flex flex-col justify-between">
+                    <div>
+                      <div className="p-3 bg-white/20 rounded-xl w-fit mb-4 backdrop-blur-sm">
+                        <Plus className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-1">New Estimate</h3>
+                      <p className="text-indigo-100 text-sm">
+                        Upload a floor plan to start analysis
+                      </p>
+                    </div>
+                    <div className="flex items-center text-sm font-semibold mt-6">
+                      Start Now{" "}
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Go to Profile / Saved Plans Card */}
+                <div
+                  onClick={() => navigate("/profile")}
+                  className="group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-[0.03] group-hover:opacity-10 transition-opacity text-indigo-600 dark:text-indigo-400">
+                    <LayoutDashboard size={120} />
+                  </div>
+                  <div className="relative z-10 h-full flex flex-col justify-between">
+                    <div>
+                      <div className="p-3 bg-indigo-50 dark:bg-slate-700 rounded-xl w-fit mb-4 text-indigo-600 dark:text-indigo-400">
+                        <LayoutDashboard className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-1 text-slate-900 dark:text-white">
+                        Saved Projects
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        View and manage your past estimates
+                      </p>
+                    </div>
+                    <div className="flex items-center text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-6">
+                      Go to Profile{" "}
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats / Info Card (Optional) */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center text-center">
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-3">
+                    <Clock className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                    {isLoadingRecent ? "..." : totalProjects}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Total Projects Created
+                  </p>
+                </div>
+              </div>
+
+              {/* Recent Projects Section */}
+              <div>
+                <div className="flex justify-between items-end mb-6">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                    Recent Activity
+                  </h2>
+                  {recentPlans.length > 0 && (
+                    <button
+                      onClick={() => navigate("/profile")}
+                      className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center"
+                    >
+                      View All <ArrowRight className="w-4 h-4 ml-1" />
+                    </button>
+                  )}
+                </div>
+
+                {isLoadingRecent ? (
+                  <div className="flex justify-center p-8">
+                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : recentPlans.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {recentPlans.map((plan) => (
+                      <div
+                        key={plan._id}
+                        onClick={() =>
+                          navigate("/profile", {
+                            state: { openPlanId: plan._id },
+                          })
+                        }
+                        className="group cursor-pointer bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all duration-300"
+                      >
+                        <div className="h-40 overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
+                          <img
+                            src={plan.imageUrl}
+                            alt="Floor Plan"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                            <span className="text-white text-sm font-medium">
+                              View Analysis
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="font-bold text-slate-900 dark:text-white mb-1 truncate">
+                            {new Date(plan.createdAt).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </h4>
+                          <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-3">
+                            <span>
+                              {(
+                                plan.analysisResult.summary?.totalAreaSqFt ||
+                                (plan.analysisResult.summary?.totalAreaSqM
+                                  ? plan.analysisResult.summary.totalAreaSqM *
+                                    10.7639
+                                  : 0)
+                              ).toFixed(1)}{" "}
+                              ft²
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {plan.analysisResult.rooms?.length || 0} Rooms
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <div className="bg-slate-50 dark:bg-slate-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Plus className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h3 className="text-slate-900 dark:text-white font-medium mb-1">
+                      No saved plans yet
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">
+                      Create your first estimate to see it here.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            // UPLOAD VIEW (Original Hero)
+            <div className="h-full flex flex-col items-center justify-center animate-fade-in transition-all duration-300 pointer-events-auto relative">
+              {user && (
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="absolute top-4 left-0 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors z-10"
+                >
+                  <ArrowRight className="w-4 h-4 mr-1 rotate-180" /> Back to
+                  Home
+                </button>
+              )}
+              <div className="w-full max-w-3xl mx-auto px-4">
+                <div className="transform transition-all hover:scale-[1.01] duration-300 shadow-xl rounded-xl">
+                  <FileUpload
+                    file={file}
+                    previewUrl={previewUrl}
+                    isAnalyzing={isAnalyzing}
+                    error={error}
+                    onFileChange={handleFileChange}
+                    onAnalyze={handleAnalyze}
+                    onClear={clearFile}
+                    variant="hero"
+                  />
+                </div>
+              </div>
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
             {/* LEFT COLUMN: Sidebar Navigation & Tools */}
@@ -594,8 +840,43 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                 </nav>
               </div>
 
+              {/* Parameters Panel */}
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 shrink-0 transition-all duration-300">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3 flex items-center">
+                  <Ruler className="w-4 h-4 mr-2 text-indigo-500" />
+                  Parameters
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Ceiling Height */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Ceiling Height
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={settings.wallHeightFt}
+                        onChange={(e) =>
+                          setSettings((prev) => ({
+                            ...prev,
+                            wallHeightFt: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="block w-full rounded-md border-slate-200 dark:border-slate-600 pl-3 pr-8 text-sm py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      <span className="absolute right-3 top-2 text-xs text-slate-500 font-bold">
+                        ft
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Upload & Preview */}
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 transition-all duration-300 flex-1 overflow-y-auto lg:overflow-visible custom-scrollbar">
+              <div className="transition-all duration-300 flex-1 min-h-0 flex flex-col">
                 <FileUpload
                   file={file}
                   previewUrl={previewUrl}
@@ -616,7 +897,6 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                   analysis={calibratedAnalysis}
                   totalCost={totalProjectCost}
                   formatCurrency={formatINR}
-                  areaUnit={areaUnit}
                 />
               </div>
 
@@ -632,7 +912,6 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                   consolidatedReport={consolidatedReport}
                   currentView={currentView}
                   onViewChange={setCurrentView}
-                  areaUnit={areaUnit}
                   scalingFactors={scalingFactors}
                 />
               </div>
@@ -651,16 +930,12 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
             <CalibrationPanel
               calibrationArea={calibrationArea}
               setCalibrationArea={setCalibrationArea}
-              areaUnit={areaUnit}
-              setAreaUnit={handleUnitChange}
               settings={settings}
               setSettings={setSettings}
               variant="clean"
               customRates={customRates}
               onRateUpdate={handleRateUpdate}
-              calculatedQuantities={calculatedQuantities}
-              customQuantities={customQuantities}
-              onQuantityUpdate={handleQuantityUpdate}
+              // Removed customQuantities props to CalibrationPanel as requested
               isPlanAnalyzed={!!calibratedAnalysis}
             />
           </div>

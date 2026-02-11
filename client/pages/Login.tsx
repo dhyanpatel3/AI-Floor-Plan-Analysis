@@ -1,16 +1,10 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import AuthContext from "../contexts/AuthContext";
 
 function Login() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
-  const { email, password } = formData;
-
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
 
@@ -18,7 +12,7 @@ function Login() {
     throw new Error("AuthContext must be used within an AuthProvider");
   }
 
-  const { user, isLoading, isError, isSuccess, message, login, reset } =
+  const { user, isLoading, isError, isSuccess, message, googleLogin, reset } =
     authContext;
 
   useEffect(() => {
@@ -35,24 +29,6 @@ function Login() {
     };
   }, [user, isError, isSuccess, message, navigate, reset]);
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const userData = {
-      email,
-      password,
-    };
-
-    login(userData);
-  };
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
@@ -65,54 +41,29 @@ function Login() {
     <div className="flex justify-center items-center h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 mx-4 transition-all duration-300">
         <h2 className="text-3xl font-bold mb-8 text-center text-slate-800 dark:text-white tracking-tight">
-          Welcome Back
+          Welcome
         </h2>
-        <form onSubmit={onSubmit} className="space-y-6">
-          <div>
-            <label
-              className="block text-slate-700 dark:text-slate-300 text-sm font-semibold mb-2"
-              htmlFor="email"
-            >
-              Email Address
-            </label>
-            <input
-              type="email"
-              className="w-full px-4 py-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              id="email"
-              name="email"
-              value={email}
-              onChange={onChange}
-              placeholder="Enter your email"
-              required
-            />
-          </div>
-          <div>
-            <label
-              className="block text-slate-700 dark:text-slate-300 text-sm font-semibold mb-2"
-              htmlFor="password"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              className="w-full px-4 py-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              id="password"
-              name="password"
-              value={password}
-              onChange={onChange}
-              placeholder="Enter password"
-              required
-            />
-          </div>
-          <div className="pt-2">
-            <button
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/20 shadow-md shadow-indigo-500/10 transition-all duration-200 transform hover:scale-[1.01]"
-              type="submit"
-            >
-              Sign In
-            </button>
-          </div>
-        </form>
+
+        <p className="text-center text-slate-600 dark:text-slate-400 mb-8">
+          Sign in to access your dashboard
+        </p>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={(credentialResponse) => {
+              if (credentialResponse.credential) {
+                googleLogin(credentialResponse.credential);
+              }
+            }}
+            onError={() => {
+              toast.error("Google Login Failed");
+            }}
+            useOneTap
+            theme="filled_blue"
+            size="large"
+            width="300"
+          />
+        </div>
       </div>
     </div>
   );

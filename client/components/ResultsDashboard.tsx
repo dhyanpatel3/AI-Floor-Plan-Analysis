@@ -27,7 +27,6 @@ interface ResultsDashboardProps {
   consolidatedReport: { category: string; cost: number }[];
   currentView: "overview" | "rooms" | "boq";
   onViewChange?: (view: "overview" | "rooms" | "boq") => void;
-  areaUnit: "sqm" | "sqft";
   scalingFactors?: Record<string, number>;
 }
 
@@ -41,7 +40,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   consolidatedReport,
   currentView,
   onViewChange,
-  areaUnit,
   scalingFactors = {},
 }) => {
   const [selectedRoomIndex, setSelectedRoomIndex] = useState<number | null>(
@@ -69,21 +67,11 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
     return { ...result, materials: scaledMaterials, totalCost: newTotal };
   };
 
-  const formatArea = (areaSqM: number) => {
-    if (areaUnit === "sqft") {
-      return (
-        <span>
-          {(areaSqM * 10.7639).toFixed(1)}{" "}
-          <span className="text-sm text-slate-400 dark:text-slate-500">
-            ft²
-          </span>
-        </span>
-      );
-    }
+  const formatArea = (areaSqFt: number) => {
     return (
       <span>
-        {areaSqM.toFixed(1)}{" "}
-        <span className="text-sm text-slate-400 dark:text-slate-500">m²</span>
+        {areaSqFt.toFixed(1)}{" "}
+        <span className="text-sm text-slate-400 dark:text-slate-500">ft²</span>
       </span>
     );
   };
@@ -224,7 +212,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                 Area
               </div>
               <div className="text-xl font-medium text-slate-800 dark:text-slate-200 mt-1">
-                {formatArea(analysis.rooms[selectedRoomIndex].areaSqM)}
+                {formatArea(analysis.rooms[selectedRoomIndex].areaSqFt)}
               </div>
             </div>
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
@@ -232,9 +220,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                 Perimeter
               </div>
               <div className="text-xl font-medium text-slate-800 dark:text-slate-200 mt-1">
-                {analysis.rooms[selectedRoomIndex].perimeterM.toFixed(1)}{" "}
+                {analysis.rooms[selectedRoomIndex].perimeterFt.toFixed(1)}{" "}
                 <span className="text-sm text-slate-400 dark:text-slate-500">
-                  m
+                  ft
                 </span>
               </div>
             </div>
@@ -397,7 +385,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                     </div>
                     <div className="flex justify-between items-end">
                       <div className="text-sm text-slate-500 dark:text-slate-400">
-                        {formatArea(room.areaSqM)}
+                        {formatArea(room.areaSqFt)}
                       </div>
                       <div className="font-bold text-slate-900 dark:text-white">
                         {formatCurrency(details.totalCost)}

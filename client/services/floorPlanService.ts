@@ -47,10 +47,26 @@ const deleteFloorPlan = async (id: string, token: string) => {
   return response.data;
 };
 
+const updateFloorPlan = async (
+  id: string,
+  costEstimation: any,
+  token: string,
+) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.put(API_URL + id, { costEstimation }, config);
+  return response.data;
+};
+
 const floorPlanService = {
   saveFloorPlan,
   getUserFloorPlans,
   deleteFloorPlan,
+  updateFloorPlan,
 };
 
 export default floorPlanService;

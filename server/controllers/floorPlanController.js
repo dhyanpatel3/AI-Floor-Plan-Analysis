@@ -88,8 +88,45 @@ const deleteFloorPlan = asyncHandler(async (req, res) => {
   res.status(200).json({ id: req.params.id });
 });
 
+// @desc    Update floor plan cost estimation
+// @route   PUT /api/floorplans/:id
+// @access  Private
+const updateFloorPlan = asyncHandler(async (req, res) => {
+  const floorPlan = await FloorPlan.findById(req.params.id);
+
+  if (!floorPlan) {
+    res.status(404);
+    throw new Error("Floor plan not found");
+  }
+
+  // Check for user
+  if (!req.user) {
+    res.status(401);
+    throw new Error("User not found");
+  }
+
+  // Make sure the logged in user matches the goal user
+  if (floorPlan.user.toString() !== req.user.id) {
+    res.status(401);
+    throw new Error("User not authorized");
+  }
+
+  const { costEstimation } = req.body;
+
+  if (costEstimation) {
+    floorPlan.costEstimation =
+      typeof costEstimation === "string"
+        ? JSON.parse(costEstimation)
+        : costEstimation;
+  }
+
+  const updatedFloorPlan = await floorPlan.save();
+  res.status(200).json(updatedFloorPlan);
+});
+
 module.exports = {
   saveFloorPlan,
   getUserFloorPlans,
   deleteFloorPlan,
+  updateFloorPlan,
 };

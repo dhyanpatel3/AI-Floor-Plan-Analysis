@@ -47,7 +47,7 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
 
   const [settings, setSettings] = useState<ProjectSettings>({
     currency: "INR",
-    wallHeightM: 3.0,
+    wallHeightFt: 10,
     brickSize: "standard",
   });
 
@@ -55,7 +55,7 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
   const [customQuantities, setCustomQuantities] = useState<
     Record<string, number>
   >({});
-  const [areaUnit, setAreaUnit] = useState<"sqm" | "sqft">("sqm");
+  const [areaUnit, setAreaUnit] = useState<"sqm" | "sqft">("sqft");
 
   const resetAnalysis = () => {
     setFile(null);

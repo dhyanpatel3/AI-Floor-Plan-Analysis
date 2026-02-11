@@ -4,6 +4,7 @@ const {
   saveFloorPlan,
   getUserFloorPlans,
   deleteFloorPlan,
+  updateFloorPlan,
 } = require("../controllers/floorPlanController");
 const { protect } = require("../middleware/authMiddleware");
 const { parser } = require("../config/cloudinary");
@@ -14,6 +15,9 @@ router
   .get(protect, getUserFloorPlans)
   .post(protect, parser.single("image"), saveFloorPlan);
 
-router.route("/:id").delete(protect, deleteFloorPlan);
+router
+  .route("/:id")
+  .delete(protect, deleteFloorPlan)
+  .put(protect, updateFloorPlan);
 
 module.exports = router;

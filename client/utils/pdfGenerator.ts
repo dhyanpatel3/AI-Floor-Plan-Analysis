@@ -14,7 +14,6 @@ interface PDFGeneratorParams {
   customRates: Record<string, number>;
   totalCost: number;
   settings: ProjectSettings;
-  areaUnit: "sqm" | "sqft";
   calibrationArea: string; // To show calibrated area
 }
 
@@ -26,7 +25,6 @@ export const generatePDF = ({
   customRates,
   totalCost,
   settings,
-  areaUnit,
   calibrationArea,
 }: PDFGeneratorParams) => {
   const doc = new jsPDF();
@@ -67,10 +65,18 @@ export const generatePDF = ({
     ["Total Estimated Cost", formatCurrency(totalCost)],
     [
       "Total Area",
-      `${calibrationArea || analysis.summary.totalAreaSqM.toFixed(1)} ${areaUnit === "sqm" ? "m²" : "ft²"}`,
+      `${
+        calibrationArea ||
+        (
+          analysis.summary.totalAreaSqFt ||
+          (analysis.summary.totalAreaSqM
+            ? analysis.summary.totalAreaSqM * 10.7639
+            : 0)
+        ).toFixed(1)
+      } ft²`,
     ],
     ["Number of Rooms", analysis.rooms.length.toString()],
-    ["Wall Height", `${settings.wallHeightM} m`],
+    ["Wall Height", `${settings.wallHeightFt} ft`],
   ];
 
   autoTable(doc, {
