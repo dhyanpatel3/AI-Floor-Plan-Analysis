@@ -1,12 +1,18 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AnalysisProvider } from "./contexts/AnalysisContext";
 import { Header } from "./components/Header";
 import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
+import Pricing from "./pages/Pricing";
 import Profile from "./pages/Profile.tsx";
 
 function App() {
@@ -40,18 +46,29 @@ function App() {
                 <Route
                   path="/"
                   element={
-                    <Dashboard
+                    <LandingPage
                       isDarkMode={isDarkMode}
                       toggleTheme={toggleTheme}
                     />
                   }
                 />
                 <Route
-                  path="/login"
+                  path="/dashboard"
                   element={
-                    <Layout>
-                      <Login />
-                    </Layout>
+                    <Dashboard
+                      isDarkMode={isDarkMode}
+                      toggleTheme={toggleTheme}
+                    />
+                  }
+                />
+                <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route
+                  path="/pricing"
+                  element={
+                    <Pricing
+                      isDarkMode={isDarkMode}
+                      toggleTheme={toggleTheme}
+                    />
                   }
                 />
                 <Route

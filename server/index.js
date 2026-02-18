@@ -3,6 +3,8 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const { GoogleGenAI, Type } = require("@google/genai");
 const connectDB = require("./config/db");
+const { protect } = require("./middleware/authMiddleware");
+const User = require("./models/User");
 
 dotenv.config();
 
@@ -57,8 +59,18 @@ if (!apiKey) {
 }
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
-app.post("/api/analyze", async (req, res) => {
+app.post("/api/analyze", protect, async (req, res) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "User not authorized" });
+    }
+
+    // Check credits
+    if (user.credits < 1) {
+      return res.status(403).json({ error: "Insufficient credits" });
+    }
+
     const { base64Data, mimeType } = req.body;
 
     if (!base64Data || !mimeType) {
@@ -195,6 +207,11 @@ app.post("/api/analyze", async (req, res) => {
       }
       return res.status(500).json({ error: "Failed to process image." });
     }
+
+    // Deduct credit after successful analysis
+    user.credits = Math.max(0, user.credits - 1);
+    await user.save();
+    result.credits = user.credits;
 
     res.json(result);
   } catch (error) {

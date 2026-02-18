@@ -17,16 +17,34 @@ export const analyzeFloorPlan = async (file: File): Promise<AnalysisResult> => {
   const base64Data = await fileToBase64(file);
   const mimeType = file.type;
 
+  // Get token from local storage
+  let token = "";
+  const userStr = localStorage.getItem("user");
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      token = user.token;
+    } catch (e) {
+      console.error("Error parsing user token", e);
+    }
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   try {
     const response = await fetch(
       `${import.meta.env.VITE_API_URL || ""}/api/analyze`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ base64Data, mimeType }),
-      }
+      },
     );
 
     if (!response.ok) {

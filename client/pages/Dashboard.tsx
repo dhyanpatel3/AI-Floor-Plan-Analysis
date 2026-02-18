@@ -72,6 +72,10 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Save Modal State
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [planName, setPlanName] = useState("");
+
   // Home Dashboard State
   const [recentPlans, setRecentPlans] = useState<any[]>([]);
   const [totalProjects, setTotalProjects] = useState(0);
@@ -151,30 +155,42 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   // Derived State: Calibrated Analysis
   const calibratedAnalysis = useMemo<AnalysisResult | null>(() => {
     if (!rawAnalysis) return null;
-    const inputArea = parseFloat(calibrationArea);
-    if (!calibrationArea || isNaN(inputArea) || inputArea <= 0)
-      return rawAnalysis;
+    try {
+      const inputArea = parseFloat(calibrationArea);
+      if (!calibrationArea || isNaN(inputArea) || inputArea <= 0)
+        return rawAnalysis;
 
-    const userAreaSqFt = inputArea; // Always Ft
+      const userAreaSqFt = inputArea; // Always Ft
 
-    // Handle case where rawAnalysis might be old format (optional safety or just assume new)
-    // Assuming new format from server for now
-    const rawTotalArea = rawAnalysis.summary.totalAreaSqFt || 1000;
+      // Handle case where rawAnalysis might be old format (optional safety or just assume new)
+      const summary = rawAnalysis.summary || {};
+      const rawTotalArea = summary.totalAreaSqFt || (summary.totalAreaSqM ? summary.totalAreaSqM * 10.764 : 1000);
 
-    const scaleFactor = Math.sqrt(userAreaSqFt / rawTotalArea);
-    return {
-      ...rawAnalysis,
-      summary: {
-        totalAreaSqFt: userAreaSqFt,
-        totalWallLengthFt: rawAnalysis.summary.totalWallLengthFt * scaleFactor,
-        wallThicknessFt: rawAnalysis.summary.wallThicknessFt,
-      },
-      rooms: rawAnalysis.rooms.map((r) => ({
-        ...r,
-        areaSqFt: r.areaSqFt * (scaleFactor * scaleFactor),
-        perimeterFt: (r.perimeterFt || Math.sqrt(r.areaSqFt) * 4) * scaleFactor,
-      })),
-    };
+      // Prevent division by zero if rawTotalArea is 0
+      const safeRawTotalArea = rawTotalArea > 0 ? rawTotalArea : 1000;
+
+      const scaleFactor = Math.sqrt(userAreaSqFt / safeRawTotalArea);
+      
+      const rooms = Array.isArray(rawAnalysis.rooms) ? rawAnalysis.rooms : [];
+
+      return {
+        ...rawAnalysis,
+        summary: {
+          ...summary,
+          totalAreaSqFt: userAreaSqFt,
+          totalWallLengthFt: (summary.totalWallLengthFt || 0) * scaleFactor,
+          wallThicknessFt: summary.wallThicknessFt,
+        },
+        rooms: rooms.map((r) => ({
+          ...r,
+          areaSqFt: (r.areaSqFt || 0) * (scaleFactor * scaleFactor),
+          perimeterFt: ((r.perimeterFt || 0) || Math.sqrt(r.areaSqFt || 0) * 4) * scaleFactor,
+        })),
+      };
+    } catch (e) {
+      console.error("Error in calibration logic", e);
+      return rawAnalysis || null;
+    }
   }, [rawAnalysis, calibrationArea]);
 
   // Derived State: Base Global Structure Costs (Scientific)
@@ -385,24 +401,75 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
 
   const handleAnalyze = async () => {
     if (!file) return;
+
+    // Check credits for authenticated users
+    // Only block if we KNOW credits are <= 0. If undefined, let server decide (it returns 403).
+    if (user && user.credits !== undefined && user.credits <= 0) {
+      toast.error("Insufficient credits. Please upgrade to continue.");
+      navigate("/pricing");
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     try {
-      const result = await analyzeFloorPlan(file);
-      setRawAnalysis(result);
+      const result: any = await analyzeFloorPlan(file);
+
+      // Early exit if result is null/undefined
+      if (!result) {
+        throw new Error("Analysis result is empty.");
+      }
+
+      // Update credits from response if available
+      if (user && result.credits !== undefined) {
+        if (authContext && authContext.updateCredits) {
+          authContext.updateCredits(result.credits);
+        }
+      }
+
+      // Calculate area before setting rawAnalysis
+      const summary = result.summary || {};
+      const areaM =
+        summary.totalAreaSqM || (summary.totalAreaSqFt ? summary.totalAreaSqFt / 10.764 : 0);
       const area =
         areaUnit === "sqft"
-          ? result.summary.totalAreaSqM * 10.7639
-          : result.summary.totalAreaSqM;
-      setCalibrationArea(area.toFixed(1));
+          ? (summary.totalAreaSqFt || areaM * 10.764)
+          : areaM;
+      
+      const safeArea = (area && !isNaN(area)) ? area : (summary.totalAreaSqFt || 1000);
+      
+      // Update state in specific order: calibration area first, then raw analysis which triggers memo
+      setCalibrationArea(safeArea.toFixed(1));
+      
+      // Wait a tick to ensure parsing has time? No, react batches.
+      setRawAnalysis(result);
+      
+      // Force scroll to top if needed? 
+      // But we just want to switch views.
     } catch (err: any) {
-      setError(err.message || "Failed to analyze floor plan.");
+      console.error("Analysis Failed:", err);
+      if (err.message && err.message.includes("403")) {
+        toast.error("Insufficient credits.");
+        navigate("/pricing");
+      } else {
+        setError(err.message || "Failed to analyze floor plan.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleSaveToProfile = async () => {
+  const handleSaveToProfile = () => {
+    if (!file || !rawAnalysis) return;
+    if (!user) {
+      toast.error("Please login to save floor plan");
+      return;
+    }
+    setPlanName("");
+    setIsSaveModalOpen(true);
+  };
+
+  const performSave = async () => {
     // Save calibrated analysis if available (user adjusted it), otherwise raw
     const analysisToSave = calibratedAnalysis || rawAnalysis;
 
@@ -411,6 +478,13 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       toast.error("Please login to save floor plan");
       return;
     }
+
+    if (!planName.trim()) {
+      toast.error("Please enter a name for the project");
+      return;
+    }
+
+    setIsSaveModalOpen(false);
 
     // Calculate all data needed for storage
     // 1. Calculate Per-Room Costs
@@ -497,6 +571,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         analysisToSave,
         costEstimationData,
         user.token,
+        planName,
       );
       toast.success("Floor plan and cost estimation saved to profile!");
     } catch (error: any) {
@@ -544,6 +619,35 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         return rest;
       }
       return { ...prev, [id]: newRate };
+    });
+  };
+
+  const handleQuantityUpdate = (id: string, newQuantity: number) => {
+    // If we are in "Room View", we might need more complex logic to reverse-engineer the global quantity.
+    // For now, let's assume direct edits are overrides for the GLOBAL total if in BOQ/Overview.
+    // However, if we are in Room View, editing 'Quantity' for a room item only affects that room?
+    // The current state model: customQuantities is a map { materialId: TOTAL_QUANTITY }.
+    // It scales everything proportionally.
+    // We cannot easily set quantity for just one room without a more complex state (e.g. room-specific overrides).
+    // Given the constraints and likely user intent (adjusting BOQ), let's implement global override behavior.
+
+    // CAUTION: If user edits quantity in a Room View, they might be expecting to change ONLY that room.
+    // But currently backend logic scales everything globally.
+    // To support "Edit what you see", we need to know the context.
+    // But CostTable doesn't pass context.
+
+    // Simplest approach: Update customQuantities directly.
+    // If the user expects to see 100 in the room, and we force the global total to be such that the room is 100...
+    // That requires: globalTotal = (desiredRoomQty / currentRoomQty) * currentGlobalTotal
+    // We don't have enough info here easily.
+
+    // Let's implement direct global override first, as it's the primary mechanism.
+    setCustomQuantities((prev) => {
+      if (newQuantity < 0) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: newQuantity };
     });
   };
 
@@ -659,7 +763,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                       </p>
                     </div>
                     <div className="flex items-center text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-6">
-                      Go to Profile{" "}
+                      Go to Projects{" "}
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -908,6 +1012,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                   settings={settings}
                   customRates={customRates}
                   onRateUpdate={handleRateUpdate}
+                  onQuantityUpdate={handleQuantityUpdate}
                   formatCurrency={formatINR}
                   consolidatedReport={consolidatedReport}
                   currentView={currentView}
@@ -952,6 +1057,47 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
             >
               <Save className="w-4 h-4" />
               Save Settings
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        title="Save Project"
+      >
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Project Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm"
+              placeholder="e.g. My Dream Home"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") performSave();
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setIsSaveModalOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={performSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              disabled={isSaving}
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? "Saving..." : "Save Project"}
             </button>
           </div>
         </div>

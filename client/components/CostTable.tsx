@@ -1,17 +1,74 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { MaterialCost } from "../types";
 import { Edit2 } from "lucide-react";
+
+interface EditableCellProps {
+  value: number;
+  onSave: (newValue: number) => void;
+}
+
+const EditableCell: React.FC<EditableCellProps> = ({ value, onSave }) => {
+  // Format initial value to max 2 decimals to avoid long floats like 36.000001
+  const formatValue = (val: number) => {
+    return Number.isInteger(val)
+      ? val.toString()
+      : parseFloat(val.toFixed(2)).toString();
+  };
+
+  const [localValue, setLocalValue] = useState(formatValue(value));
+
+  // Sync local value when prop changes (unless dealing with decimal input in progress, handled by blur)
+  useEffect(() => {
+    setLocalValue(formatValue(value));
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = () => {
+    const num = parseFloat(localValue);
+    if (!isNaN(num) && num !== value) {
+      onSave(num);
+    } else {
+      // Revert if invalid or unchanged
+      setLocalValue(formatValue(value));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-end group cursor-pointer relative">
+      <input
+        type="number"
+        className="w-24 text-right border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:ring-blue-500 focus:border-blue-500 rounded-md sm:text-sm p-1 border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+      />
+      <Edit2 className="w-3 h-3 text-gray-400 dark:text-slate-500 ml-2 opacity-0 group-hover:opacity-100 absolute -right-4 pointer-events-none" />
+    </div>
+  );
+};
 
 interface CostTableProps {
   materials: MaterialCost[];
   currency: string;
   onUpdateRate: (id: string, newRate: number) => void;
+  onUpdateQuantity?: (id: string, newQuantity: number) => void;
 }
 
 export const CostTable: React.FC<CostTableProps> = ({
   materials,
   currency,
   onUpdateRate,
+  onUpdateQuantity,
 }) => {
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -70,25 +127,22 @@ export const CostTable: React.FC<CostTableProps> = ({
                         {item.unit}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-slate-100">
-                        {item.quantity.toLocaleString(undefined, {
-                          maximumFractionDigits: 1,
-                        })}
+                        {onUpdateQuantity ? (
+                          <EditableCell
+                            value={item.quantity}
+                            onSave={(val) => onUpdateQuantity(item.id, val)}
+                          />
+                        ) : (
+                          item.quantity.toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-slate-100">
-                        <div className="flex items-center justify-end group cursor-pointer relative">
-                          <input
-                            type="number"
-                            className="w-24 text-right border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:ring-blue-500 focus:border-blue-500 rounded-md sm:text-sm p-1 border"
-                            value={item.unitRate}
-                            onChange={(e) =>
-                              onUpdateRate(
-                                item.id,
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                          />
-                          <Edit2 className="w-3 h-3 text-gray-400 dark:text-slate-500 ml-2 opacity-0 group-hover:opacity-100 absolute -right-4" />
-                        </div>
+                        <EditableCell
+                          value={item.unitRate}
+                          onSave={(val) => onUpdateRate(item.id, val)}
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-slate-100">
                         {formatCurrency(item.totalCost)}
@@ -108,7 +162,7 @@ export const CostTable: React.FC<CostTableProps> = ({
               </td>
               <td className="px-6 py-4 text-right font-bold text-blue-600 text-lg">
                 {formatCurrency(
-                  materials.reduce((acc, curr) => acc + curr.totalCost, 0)
+                  materials.reduce((acc, curr) => acc + curr.totalCost, 0),
                 )}
               </td>
             </tr>

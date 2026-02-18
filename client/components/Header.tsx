@@ -9,10 +9,10 @@ import {
   LogOut,
   LogIn,
   Save,
+  Zap,
 } from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import LoginModal from "./LoginModal";
-
 
 interface HeaderProps {
   isDarkMode: boolean;
@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   const onLogout = () => {
     if (logout) {
       logout();
-      navigate("/login");
+      navigate("/");
     }
   };
 
@@ -62,6 +62,20 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {user && (
+            <Link
+              to="/pricing"
+              className="px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 transition-colors flex items-center gap-1.5 mr-2 border border-indigo-200 dark:border-indigo-800"
+              title="Buy More Credits"
+            >
+              <Zap className="w-3.5 h-3.5 fill-indigo-500 text-indigo-500" />
+              <span className="text-sm font-bold">{user.credits || 0}</span>
+              <span className="text-[10px] uppercase font-bold tracking-wide hidden sm:inline opacity-70">
+                Credits
+              </span>
+            </Link>
+          )}
+
           {onSaveProfile && user && (
             <button
               onClick={onSaveProfile}
@@ -95,8 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
+              className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
               aria-label="Open Settings"
+              title="Settings"
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -104,13 +119,14 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="Toggle Theme"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {isDarkMode ? (
               <Sun className="w-5 h-5 text-amber-400" />
             ) : (
-              <Moon className="w-5 h-5 text-slate-600" />
+              <Moon className="w-5 h-5" />
             )}
           </button>
 
@@ -118,15 +134,17 @@ export const Header: React.FC<HeaderProps> = ({
             <>
               <Link
                 to="/profile"
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 aria-label="Profile"
+                title="Profile"
               >
                 <UserIcon className="w-5 h-5" />
               </Link>
               <button
                 onClick={onLogout}
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 relative group"
                 aria-label="Logout"
+                title="Logout"
               >
                 <LogOut className="w-5 h-5" />
               </button>

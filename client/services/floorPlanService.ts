@@ -9,11 +9,16 @@ const saveFloorPlan = async (
   analysisResult: any,
   costEstimation: any,
   token: string,
+  name?: string,
 ) => {
   const formData = new FormData();
   formData.append("image", file);
   formData.append("analysisResult", JSON.stringify(analysisResult));
   formData.append("costEstimation", JSON.stringify(costEstimation));
+
+  if (name) {
+    formData.append("name", name);
+  }
 
   const config = {
     headers: {

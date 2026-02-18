@@ -13,6 +13,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.3",
+    "framer-motion": "^12.34.1",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
@@ -20,7 +21,8 @@
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.13.0",
     "react-toastify": "^11.0.5",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "sweetalert2": "^11.26.18"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

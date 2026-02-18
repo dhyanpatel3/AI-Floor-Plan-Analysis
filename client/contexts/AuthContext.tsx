@@ -5,11 +5,13 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  credits: number;
   token: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  updateCredits: (credits: number) => void;
   isLoading: boolean;
   isError: boolean;
   isSuccess: boolean;
@@ -102,6 +104,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const updateCredits = (credits: number) => {
+    if (user) {
+      const updatedUser = { ...user, credits };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   const reset = () => {
     setIsError(false);
     setIsSuccess(false);
@@ -121,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         googleLogin,
         logout,
+        updateCredits,
         reset,
       }}
     >

@@ -67,14 +67,18 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const { user } = useContext(AuthContext) || {};
+  
+  // Track user ID to handle user switching correctly.
+  // We use user._id because the auth context defines it as _id (MongoDB style).
+  // This prevents the analysis from resetting when only credits update.
+  const userId = user?._id || user?.id;
 
-  // Reset analysis when user authentication state changes (login/logout/signup)
   useEffect(() => {
-    // This allows clearing data when a user logs out (user becomes null)
-    // or when a new user logs in (user object changes).
-    // The initial load might trigger this if user starts as null, which is fine (starts empty).
-    resetAnalysis();
-  }, [user]);
+    // If no user ID (logged out or not logged in), clear analysis state.
+    if (!userId) {
+      resetAnalysis();
+    }
+  }, [userId]); 
 
   return (
     <AnalysisContext.Provider

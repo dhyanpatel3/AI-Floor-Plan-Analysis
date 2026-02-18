@@ -65,13 +65,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         variant === "default" ? "h-full flex flex-col" : ""
       }`}
     >
-      <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
-        <h2 className="text-base font-semibold text-slate-800 dark:text-white flex items-center">
-          <Upload className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
-          Upload Plan
-        </h2>
-      </div>
-
       <div
         className={`p-4 ${
           variant === "default" ? "flex-1 min-h-0 flex flex-col" : ""
@@ -107,16 +100,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 variant === "default" ? "h-full flex flex-col min-h-0" : ""
               }`}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClear();
-                }}
-                className="absolute -top-4 -right-4 bg-white dark:bg-slate-700 rounded-full p-1 shadow-md border border-slate-200 dark:border-slate-600 hover:bg-red-50 dark:hover:bg-red-900/50 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                title="Remove file"
-              >
-                <X size={16} />
-              </button>
+              {/* Removed Cross Button */}
 
               {file?.type.includes("pdf") ? (
                 <div className="flex flex-col items-center justify-center py-8">
@@ -152,25 +136,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               )}
             </div>
           ) : variant === "hero" ? (
-            <div className="py-12 space-y-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 mb-2 ring-8 ring-indigo-50/50 dark:ring-indigo-900/10">
-                <BarChart3 className="w-10 h-10" />
+            <div className="py-12 space-y-6 flex flex-col items-center justify-center">
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-slate-50 dark:bg-slate-800/50 text-indigo-600 dark:text-indigo-400 mb-2 shadow-inner ring-1 ring-slate-200 dark:ring-slate-700">
+                  <Upload className="w-10 h-10 transition-transform duration-300 group-hover:-translate-y-1" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
-                  AI Construction Estimator
-                </h1>
-                <p className="text-base text-slate-500 dark:text-slate-400 max-w-lg mx-auto leading-relaxed px-4">
-                  Upload your floor plan to instantly generate material
-                  quantities, cost estimates, and detailed room-by-room
-                  analysis.
+
+              <div className="pt-4 text-center">
+                <p className="text-lg font-medium text-slate-900 dark:text-white">
+                  Click to upload or drag & drop
                 </p>
-              </div>
-              <div className="pt-4">
-                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                  Click to Upload or Drag & Drop
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-light">
                   Supports JPG, PNG, PDF (Max 10MB)
                 </p>
               </div>
@@ -201,6 +179,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
         {file && !isAnalyzing && variant === "hero" && (
           <button
+            type="button"
             onClick={onAnalyze}
             className="mt-6 w-full flex items-center justify-center py-3 px-4 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-lg font-medium shadow-md shadow-indigo-200 dark:shadow-none transition-all transform active:scale-[0.98]"
           >
@@ -212,6 +191,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         {isAnalyzing && (
           <button
             disabled
+            type="button"
             className="mt-6 w-full flex items-center justify-center py-3 px-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg font-medium cursor-wait"
           >
             <RefreshCw className="animate-spin w-4 h-4 mr-2" />

@@ -43,6 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
       _id: user.id,
       name: user.name,
       email: user.email,
+      credits: user.credits,
       token: generateToken(user._id),
     });
   } else {
@@ -65,6 +66,7 @@ const loginUser = asyncHandler(async (req, res) => {
       _id: user.id,
       name: user.name,
       email: user.email,
+      credits: user.credits,
       token: generateToken(user._id),
     });
   } else {
@@ -118,6 +120,7 @@ const googleLogin = asyncHandler(async (req, res) => {
     _id: user.id,
     name: user.name,
     email: user.email,
+    credits: user.credits,
     token: generateToken(user._id),
   });
 });

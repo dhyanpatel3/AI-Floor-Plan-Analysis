@@ -7,10 +7,12 @@ import { Modal } from "../components/Modal";
 import { AnalysisResult, ProjectSettings } from "../types";
 import { generatePDF } from "../utils/pdfGenerator";
 import { useNavigate, useLocation } from "react-router-dom";
+import Swal from "sweetalert2";
 
 interface FloorPlanRecord {
   _id: string;
   imageUrl: string;
+  fileName?: string;
   analysisResult: AnalysisResult;
   costEstimation?: {
     totalProjectCost: number;
@@ -112,19 +114,31 @@ function Profile() {
     fetchFloorPlans();
   }, [user, location.state]);
 
-  const handleDelete = async (id: string) => {
-    if (
-      !user ||
-      !window.confirm("Are you sure you want to delete this floor plan?")
-    )
-      return;
+  const handleDelete = async (id: string, name?: string) => {
+    if (!user) return;
 
-    try {
-      await floorPlanService.deleteFloorPlan(id, user.token);
-      setFloorPlans(floorPlans.filter((plan) => plan._id !== id));
-      toast.success("Floor plan deleted successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete floor plan");
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You won't be able to revert this!`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await floorPlanService.deleteFloorPlan(id, user.token);
+        setFloorPlans(floorPlans.filter((plan) => plan._id !== id));
+        Swal.fire("Deleted!", "Your floor plan has been deleted.", "success");
+      } catch (error: any) {
+        Swal.fire(
+          "Error!",
+          error.message || "Failed to delete floor plan",
+          "error",
+        );
+      }
     }
   };
 
@@ -343,7 +357,7 @@ function Profile() {
     <div className="container mx-auto mt-10 p-5">
       <div className="flex items-center gap-4 mb-5">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition"
         >
           <ArrowLeft className="w-6 h-6 dark:text-white" />
@@ -385,9 +399,15 @@ function Profile() {
                     />
                   </div>
                   <div className="p-4 flex-1 flex flex-col">
-                    <h3 className="font-bold text-lg mb-2 text-slate-900 dark:text-white">
-                      {new Date(plan.createdAt).toLocaleDateString()}
+                    <h3
+                      className="font-bold text-lg mb-1 truncate text-slate-900 dark:text-white"
+                      title={plan.fileName}
+                    >
+                      {plan.fileName || "Untitled Project"}
                     </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                      {new Date(plan.createdAt).toLocaleDateString()}
+                    </p>
                     <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
                       Area:{" "}
                       <span className="font-medium text-slate-900 dark:text-white">
@@ -416,7 +436,7 @@ function Profile() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(plan._id)}
+                        onClick={() => handleDelete(plan._id, plan.fileName)}
                         className="flex items-center justify-center gap-2 px-3 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
                         title="Delete"
                       >

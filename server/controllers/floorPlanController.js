@@ -15,7 +15,7 @@ const saveFloorPlan = asyncHandler(async (req, res) => {
     throw new Error("Analysis result is required");
   }
 
-  const { analysisResult, costEstimation } = req.body;
+  const { analysisResult, costEstimation, name } = req.body;
 
   // Parse analysisResult if it's sent as a string (multipart/form-data often sends objects as strings)
   let parsedAnalysis;
@@ -41,7 +41,7 @@ const saveFloorPlan = asyncHandler(async (req, res) => {
   const floorPlan = await FloorPlan.create({
     user: req.user.id,
     imageUrl: req.file.path,
-    fileName: req.file.originalname,
+    fileName: name || req.file.originalname,
     analysisResult: parsedAnalysis,
     costEstimation: parsedCostEstimation,
   });

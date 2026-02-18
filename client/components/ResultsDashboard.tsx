@@ -23,6 +23,7 @@ interface ResultsDashboardProps {
   settings: ProjectSettings;
   customRates: Record<string, number>;
   onRateUpdate: (id: string, newRate: number) => void;
+  onQuantityUpdate?: (id: string, newQuantity: number) => void;
   formatCurrency: (val: number) => string;
   consolidatedReport: { category: string; cost: number }[];
   currentView: "overview" | "rooms" | "boq";
@@ -36,6 +37,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   settings,
   customRates,
   onRateUpdate,
+  onQuantityUpdate,
   formatCurrency,
   consolidatedReport,
   currentView,
@@ -177,6 +179,43 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
     value: item.cost,
   }));
 
+  const handleSubQuantityUpdate = (
+    materialsList: MaterialCost[],
+    id: string,
+    newQuantity: number,
+  ) => {
+    const currentItem = materialsList.find((m) => m.id === id);
+    if (!currentItem) return;
+
+    // If current quantity is 0, we cannot calculate a ratio safely.
+    // Fallback: If we are in Full BOQ view (where materialsList === fullProjectBOQ),
+    // we can just set the absolute value.
+    const isFullBOQ = materialsList === fullProjectBOQ;
+
+    if (currentItem.quantity === 0) {
+      if (isFullBOQ) {
+        onQuantityUpdate?.(id, newQuantity);
+      }
+      // If not full BOQ, we can't really scale 0 to something else meaningfully without more context
+      // or just assuming unit scaling. For now, let's allow updating if it's the full BOQ.
+      return;
+    }
+
+    // Ratio = Target / Current
+    const ratio = newQuantity / currentItem.quantity;
+
+    // Find the CURRENT GLOBAL TOTAL for this item from fullProjectBOQ
+    const globalItem = fullProjectBOQ.find((m) => m.id === id);
+    if (!globalItem) return;
+
+    // If we are editing the global item directly, just use the new value to avoid precision issues
+    const newGlobalTotal = isFullBOQ
+      ? newQuantity
+      : globalItem.quantity * ratio;
+
+    onQuantityUpdate?.(id, newGlobalTotal);
+  };
+
   // Room Detail View
   if (selectedRoomCost && selectedRoomIndex !== null) {
     return (
@@ -232,6 +271,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             materials={selectedRoomCost.materials}
             currency={settings.currency}
             onUpdateRate={onRateUpdate}
+            onUpdateQuantity={(id, val) =>
+              handleSubQuantityUpdate(selectedRoomCost.materials, id, val)
+            }
           />
         </div>
       </div>
@@ -287,6 +329,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             materials={selectedCategoryMaterials}
             currency={settings.currency}
             onUpdateRate={onRateUpdate}
+            onUpdateQuantity={(id, val) =>
+              handleSubQuantityUpdate(selectedCategoryMaterials, id, val)
+            }
           />
         </div>
       </div>
@@ -411,6 +456,9 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                   materials={fullProjectBOQ}
                   currency={settings.currency}
                   onUpdateRate={onRateUpdate}
+                  onUpdateQuantity={(id, val) =>
+                    handleSubQuantityUpdate(fullProjectBOQ, id, val)
+                  }
                 />
               </div>
             </div>
