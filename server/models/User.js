@@ -24,6 +24,27 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isAdmin: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
+  companyName: {
+    type: String,
+    default: "",
+  },
+  companyAddress: {
+    type: String,
+    default: "",
+  },
+  companyPhone: {
+    type: String,
+    default: "",
+  },
+  companyLogo: {
+    type: String, // Base64 or URL
+    default: "",
+  },
 });
 
 module.exports = mongoose.model("User", userSchema);

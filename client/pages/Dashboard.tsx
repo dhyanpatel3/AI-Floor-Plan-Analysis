@@ -35,6 +35,7 @@ import settingsService from "../services/settingsService";
 import { useAnalysis } from "../contexts/AnalysisContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 interface DashboardProps {
   isDarkMode: boolean;
@@ -164,13 +165,15 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
 
       // Handle case where rawAnalysis might be old format (optional safety or just assume new)
       const summary = rawAnalysis.summary || {};
-      const rawTotalArea = summary.totalAreaSqFt || (summary.totalAreaSqM ? summary.totalAreaSqM * 10.764 : 1000);
+      const rawTotalArea =
+        summary.totalAreaSqFt ||
+        (summary.totalAreaSqM ? summary.totalAreaSqM * 10.764 : 1000);
 
       // Prevent division by zero if rawTotalArea is 0
       const safeRawTotalArea = rawTotalArea > 0 ? rawTotalArea : 1000;
 
       const scaleFactor = Math.sqrt(userAreaSqFt / safeRawTotalArea);
-      
+
       const rooms = Array.isArray(rawAnalysis.rooms) ? rawAnalysis.rooms : [];
 
       return {
@@ -184,7 +187,9 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         rooms: rooms.map((r) => ({
           ...r,
           areaSqFt: (r.areaSqFt || 0) * (scaleFactor * scaleFactor),
-          perimeterFt: ((r.perimeterFt || 0) || Math.sqrt(r.areaSqFt || 0) * 4) * scaleFactor,
+          perimeterFt:
+            (r.perimeterFt || 0 || Math.sqrt(r.areaSqFt || 0) * 4) *
+            scaleFactor,
         })),
       };
     } catch (e) {
@@ -430,21 +435,21 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       // Calculate area before setting rawAnalysis
       const summary = result.summary || {};
       const areaM =
-        summary.totalAreaSqM || (summary.totalAreaSqFt ? summary.totalAreaSqFt / 10.764 : 0);
+        summary.totalAreaSqM ||
+        (summary.totalAreaSqFt ? summary.totalAreaSqFt / 10.764 : 0);
       const area =
-        areaUnit === "sqft"
-          ? (summary.totalAreaSqFt || areaM * 10.764)
-          : areaM;
-      
-      const safeArea = (area && !isNaN(area)) ? area : (summary.totalAreaSqFt || 1000);
-      
+        areaUnit === "sqft" ? summary.totalAreaSqFt || areaM * 10.764 : areaM;
+
+      const safeArea =
+        area && !isNaN(area) ? area : summary.totalAreaSqFt || 1000;
+
       // Update state in specific order: calibration area first, then raw analysis which triggers memo
       setCalibrationArea(safeArea.toFixed(1));
-      
+
       // Wait a tick to ensure parsing has time? No, react batches.
       setRawAnalysis(result);
-      
-      // Force scroll to top if needed? 
+
+      // Force scroll to top if needed?
       // But we just want to switch views.
     } catch (err: any) {
       console.error("Analysis Failed:", err);
@@ -452,7 +457,16 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         toast.error("Insufficient credits.");
         navigate("/pricing");
       } else {
-        setError(err.message || "Failed to analyze floor plan.");
+        const errorMsg = err.message || "Failed to analyze floor plan.";
+        setError(errorMsg);
+
+        // Show prominent alert for invalid floor plans or other analysis errors
+        Swal.fire({
+          icon: "error",
+          title: "Analysis Failed",
+          text: errorMsg,
+          confirmButtonColor: "#4f46e5",
+        });
       }
     } finally {
       setIsAnalyzing(false);
@@ -586,7 +600,8 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     setPreviewUrl(null);
     setRawAnalysis(null);
     setError(null);
-    setShowUpload(false);
+    // Don't hide the upload view, just reset the file
+    // setShowUpload(false);
   };
 
   const handleLoadPlan = (plan: any) => {
@@ -668,6 +683,14 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
         totalCost: totalProjectCost,
         settings,
         calibrationArea,
+        companyDetails: user
+          ? {
+              name: user.companyName,
+              address: user.companyAddress,
+              phone: user.companyPhone,
+              logo: user.companyLogo,
+            }
+          : undefined,
       });
     } catch (e) {
       console.error("PDF Generation failed", e);
@@ -744,7 +767,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
 
                 {/* Go to Profile / Saved Plans Card */}
                 <div
-                  onClick={() => navigate("/profile")}
+                  onClick={() => navigate("/saved-plans")}
                   className="group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-[0.03] group-hover:opacity-10 transition-opacity text-indigo-600 dark:text-indigo-400">
@@ -791,7 +814,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                   </h2>
                   {recentPlans.length > 0 && (
                     <button
-                      onClick={() => navigate("/profile")}
+                      onClick={() => navigate("/saved-plans")}
                       className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center"
                     >
                       View All <ArrowRight className="w-4 h-4 ml-1" />
@@ -809,7 +832,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                       <div
                         key={plan._id}
                         onClick={() =>
-                          navigate("/profile", {
+                          navigate("/saved-plans", {
                             state: { openPlanId: plan._id },
                           })
                         }

@@ -44,7 +44,9 @@ const registerUser = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       credits: user.credits,
+      isAdmin: user.isAdmin,
       token: generateToken(user._id),
+      isNewUser: true,
     });
   } else {
     res.status(400);
@@ -67,6 +69,11 @@ const loginUser = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       credits: user.credits,
+      isAdmin: user.isAdmin,
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
+      companyPhone: user.companyPhone,
+      companyLogo: user.companyLogo,
       token: generateToken(user._id),
     });
   } else {
@@ -86,19 +93,35 @@ const getMe = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/google
 // @access  Public
 const googleLogin = asyncHandler(async (req, res) => {
-  const { credential } = req.body;
+  const { credential, access_token } = req.body;
+  let name, email;
 
-  if (!credential) {
+  if (credential) {
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    name = payload.name;
+    email = payload.email;
+  } else if (access_token) {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${access_token}`,
+      );
+      if (!response.ok) throw new Error("Failed to fetch user info");
+      const data = await response.json();
+      name = data.name;
+      email = data.email;
+    } catch (error) {
+      res.status(401);
+      throw new Error("Invalid access token");
+    }
+  } else {
     res.status(400);
     throw new Error("No credential provided");
   }
-
-  const ticket = await client.verifyIdToken({
-    idToken: credential,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
-
-  const { name, email, picture, sub } = ticket.getPayload();
 
   let user = await User.findOne({ email });
 
@@ -114,6 +137,17 @@ const googleLogin = asyncHandler(async (req, res) => {
       email,
       password: hashedPassword,
     });
+
+    res.status(201).json({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      credits: user.credits,
+      isAdmin: user.isAdmin,
+      token: generateToken(user._id),
+      isNewUser: true,
+    });
+    return;
   }
 
   res.status(200).json({
@@ -121,6 +155,11 @@ const googleLogin = asyncHandler(async (req, res) => {
     name: user.name,
     email: user.email,
     credits: user.credits,
+    isAdmin: user.isAdmin,
+    companyName: user.companyName,
+    companyAddress: user.companyAddress,
+    companyPhone: user.companyPhone,
+    companyLogo: user.companyLogo,
     token: generateToken(user._id),
   });
 });
@@ -221,6 +260,70 @@ const generateToken = (id) => {
   });
 };
 
+// @desc    Add credits to user
+// @route   PUT /api/auth/addcredits
+// @access  Private
+const addCredits = asyncHandler(async (req, res) => {
+  const { credits } = req.body;
+
+  if (!credits) {
+    res.status(400);
+    throw new Error("Please provide credit amount");
+  }
+
+  const user = await User.findById(req.user.id);
+
+  if (user) {
+    user.credits += Number(credits);
+    await user.save();
+
+    res.json({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      credits: user.credits,
+      token: generateToken(user._id),
+      companyName: user.companyName,
+      companyAddress: user.companyAddress,
+      companyPhone: user.companyPhone,
+      companyLogo: user.companyLogo,
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+// @desc    Update user details
+// @route   PUT /api/auth/updatedetails
+// @access  Private
+const updateDetails = asyncHandler(async (req, res) => {
+  const fieldsToUpdate = {
+    companyName: req.body.companyName,
+    companyAddress: req.body.companyAddress,
+    companyPhone: req.body.companyPhone,
+    companyLogo: req.body.companyLogo,
+  };
+
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    _id: user.id,
+    name: user.name,
+    email: user.email,
+    credits: user.credits,
+    isAdmin: user.isAdmin,
+    companyName: user.companyName,
+    companyAddress: user.companyAddress,
+    companyPhone: user.companyPhone,
+    companyLogo: user.companyLogo,
+    token: req.headers.authorization?.split(" ")[1],
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -228,4 +331,6 @@ module.exports = {
   googleLogin,
   forgotPassword,
   resetPassword,
+  updateDetails,
+  addCredits,
 };

@@ -67,7 +67,7 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const { user } = useContext(AuthContext) || {};
-  
+
   // Track user ID to handle user switching correctly.
   // We use user._id because the auth context defines it as _id (MongoDB style).
   // This prevents the analysis from resetting when only credits update.
@@ -78,7 +78,7 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
     if (!userId) {
       resetAnalysis();
     }
-  }, [userId]); 
+  }, [userId]);
 
   return (
     <AnalysisContext.Provider

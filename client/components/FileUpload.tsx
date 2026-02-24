@@ -100,7 +100,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 variant === "default" ? "h-full flex flex-col min-h-0" : ""
               }`}
             >
-              {/* Removed Cross Button */}
+              {!isAnalyzing && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClear();
+                  }}
+                  className="absolute -top-2 -right-2 p-1.5 bg-white dark:bg-slate-700 rounded-full shadow-md text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all z-30 ring-1 ring-slate-200 dark:ring-slate-600"
+                  title="Remove file"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
 
               {file?.type.includes("pdf") ? (
                 <div className="flex flex-col items-center justify-center py-8">

@@ -1,24 +1,35 @@
 import { createContext, useState, useEffect, ReactNode } from "react";
 import authService from "../services/authService";
+import WelcomeModal from "../components/WelcomeModal";
 
 interface User {
   _id: string;
   name: string;
   email: string;
   credits: number;
+  isAdmin: boolean;
   token: string;
+  companyName?: string;
+  companyAddress?: string;
+  companyPhone?: string;
+  companyLogo?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   updateCredits: (credits: number) => void;
+  buyCredits: (amount: number) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
   isLoading: boolean;
   isError: boolean;
   isSuccess: boolean;
   message: string;
   register: (user: any) => Promise<void>;
   login: (user: any) => Promise<void>;
-  googleLogin: (credential: string) => Promise<void>;
+  googleLogin: (data: {
+    credential?: string;
+    access_token?: string;
+  }) => Promise<void>;
   logout: () => void;
   reset: () => void;
 }
@@ -31,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -44,6 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const data = await authService.register(userData);
       setUser(data);
+      if (data.isNewUser) {
+        setShowWelcome(true);
+      }
       setIsSuccess(true);
     } catch (error: any) {
       setIsError(true);
@@ -79,12 +94,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const googleLogin = async (credential: string) => {
+  const googleLogin = async (authData: {
+    credential?: string;
+    access_token?: string;
+  }) => {
     setIsLoading(true);
     try {
-      const data = await authService.googleLogin(credential);
+      const data = await authService.googleLogin(authData);
       setUser(data);
       setIsSuccess(true);
+      if (data.isNewUser) {
+        setShowWelcome(true);
+      }
     } catch (error: any) {
       setIsError(true);
       setMessage(
@@ -112,6 +133,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const buyCredits = async (amount: number) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const updatedUser = await authService.addCredits(amount, user.token);
+      setUser(updatedUser);
+      setIsSuccess(true);
+      setMessage(`Successfully added ${amount} credits!`);
+    } catch (error: any) {
+      setIsError(true);
+      setMessage(
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+          error.message ||
+          error.toString(),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const reset = () => {
     setIsError(false);
     setIsSuccess(false);
@@ -119,10 +162,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setMessage("");
   };
 
+  const updateProfile = async (data: Partial<User>) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const updatedUser = await authService.updateDetails(data, user.token);
+      setUser(updatedUser);
+      setIsSuccess(true);
+    } catch (error: any) {
+      console.error("Update profile failed", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        updateCredits,
+        updateProfile,
         isLoading,
         isError,
         isSuccess,
@@ -131,11 +190,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         googleLogin,
         logout,
-        updateCredits,
         reset,
       }}
     >
       {children}
+      <WelcomeModal
+        isOpen={showWelcome}
+        onClose={() => setShowWelcome(false)}
+      />
     </AuthContext.Provider>
   );
 };

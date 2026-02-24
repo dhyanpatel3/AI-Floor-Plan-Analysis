@@ -32,8 +32,11 @@ const logout = () => {
 };
 
 // Google Login
-const googleLogin = async (credential: string) => {
-  const response = await axios.post(API_URL + "google", { credential });
+const googleLogin = async (data: {
+  credential?: string;
+  access_token?: string;
+}) => {
+  const response = await axios.post(API_URL + "google", data);
 
   if (response.data) {
     localStorage.setItem("user", JSON.stringify(response.data));
@@ -57,6 +60,48 @@ const resetPassword = async (password: string, token: string) => {
   return response.data;
 };
 
+// Update User Details
+const updateDetails = async (userData: any, token: string) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.put(
+    `${BASE_URL}/api/auth/updatedetails`,
+    userData,
+    config,
+  );
+
+  if (response.data) {
+    localStorage.setItem("user", JSON.stringify(response.data));
+  }
+
+  return response.data;
+};
+
+// Add Credits
+const addCredits = async (credits: number, token: string) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.put(
+    `${BASE_URL}/api/auth/addcredits`,
+    { credits },
+    config,
+  );
+
+  if (response.data) {
+    localStorage.setItem("user", JSON.stringify(response.data));
+  }
+
+  return response.data;
+};
+
 const authService = {
   register,
   logout,
@@ -64,6 +109,8 @@ const authService = {
   googleLogin,
   forgotPassword,
   resetPassword,
+  updateDetails,
+  addCredits,
 };
 
 export default authService;

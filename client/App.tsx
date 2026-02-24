@@ -14,6 +14,8 @@ import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 import Pricing from "./pages/Pricing";
 import Profile from "./pages/Profile.tsx";
+import SavedPlans from "./pages/SavedPlans.tsx";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -77,6 +79,23 @@ function App() {
                     <Layout>
                       <Profile />
                     </Layout>
+                  }
+                />
+                <Route
+                  path="/saved-plans"
+                  element={
+                    <Layout>
+                      <SavedPlans />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminDashboard
+                      isDarkMode={isDarkMode}
+                      toggleTheme={toggleTheme}
+                    />
                   }
                 />
               </Routes>

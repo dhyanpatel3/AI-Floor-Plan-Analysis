@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useGoogleLogin } from "@react-oauth/google";
 import {
   Moon,
   Sun,
@@ -10,6 +11,7 @@ import {
   LogIn,
   Save,
   Zap,
+  Shield,
 } from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import LoginModal from "./LoginModal";
@@ -35,8 +37,17 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const authContext = useContext(AuthContext);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
-  const { user, logout } = authContext || {};
+  const { user, logout, googleLogin } = authContext || {};
   const navigate = useNavigate();
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: (codeResponse) => {
+      if (googleLogin) {
+        googleLogin({ access_token: codeResponse.access_token });
+      }
+    },
+    onError: (error) => console.log("Login Failed:", error),
+  });
 
   const onLogout = () => {
     if (logout) {
@@ -132,6 +143,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {user ? (
             <>
+              {user.isAdmin && (
+                <Link
+                  to="/admin"
+                  className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  aria-label="Admin Dashboard"
+                  title="Admin Dashboard"
+                >
+                  <Shield className="w-5 h-5" />
+                </Link>
+              )}
+              <Link
+                to="/saved-plans"
+                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                aria-label="Saved Plans"
+                title="Saved Plans"
+              >
+                <Save className="w-5 h-5" />
+              </Link>
               <Link
                 to="/profile"
                 className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -151,7 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
             </>
           ) : (
             <button
-              onClick={() => setIsLoginModalOpen(true)}
+              onClick={() => handleGoogleLogin()}
               className="px-6 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
             >
               <LogIn className="w-4 h-4" />
@@ -162,6 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+      {/* LoginModal removed or kept for other purposes if needed, but not triggered by Sign In button anymore */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}

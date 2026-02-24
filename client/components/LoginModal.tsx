@@ -24,7 +24,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   const handleGoogleSuccess = (credentialResponse: any) => {
     if (credentialResponse.credential) {
-      googleLogin(credentialResponse.credential);
+      googleLogin({ credential: credentialResponse.credential });
       onClose();
     }
   };

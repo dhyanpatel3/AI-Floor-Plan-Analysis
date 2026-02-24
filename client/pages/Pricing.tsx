@@ -1,77 +1,128 @@
-import React from "react";
+import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Zap, Star, Shield, Users, ArrowLeft } from "lucide-react";
+import { Zap, Shield, Users, ArrowLeft, Plus, Minus } from "lucide-react";
 import { Header } from "../components/Header";
+import AuthContext from "../contexts/AuthContext";
+import paymentService from "../services/paymentService";
 
 interface PricingProps {
   isDarkMode: boolean;
   toggleTheme: () => void;
 }
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const Pricing: React.FC<PricingProps> = ({ isDarkMode, toggleTheme }) => {
   const navigate = useNavigate();
-  const plans = [
-    {
-      name: "Free Starter",
-      price: "$0",
-      period: "/forever",
-      credits: "5 Credits",
-      description: "Perfect for trying out our AI analysis.",
-      features: [
-        "5 Free Analysis Credits",
-        "Basic Floor Plan Detection",
-        "Standard Processing Speed",
-        "Export to PDF",
-        "Community Support",
-      ],
-      buttonText: "Current Plan",
-      buttonVariant: "outline",
-      recommended: false,
-    },
-    {
-      name: "Pro Estimator",
-      price: "$29",
-      period: "/month",
-      credits: "50 Credits",
-      description: " ideal for independent contractors & architects.",
-      features: [
-        "50 Credits per Month",
-        "Advanced Quantity Takeoff",
-        "Priority Processing",
-        "Detailed Material Breakdown",
-        "Save Unlimited Projects",
-        "Email Support",
-      ],
-      buttonText: "Upgrade to Pro",
-      buttonVariant: "primary",
-      recommended: true,
-    },
-    {
-      name: "Business",
-      price: "$99",
-      period: "/month",
-      credits: "Unlimited",
-      description: "For construction firms and high-volume usage.",
-      features: [
-        "Unlimited Analysis",
-        "Team Collaboration",
-        "API Access",
-        "Custom Branding on Reports",
-        "Dedicated Account Manager",
-        "24/7 Priority Support",
-      ],
-      buttonText: "Contact Sales",
-      buttonVariant: "outline",
-      recommended: false,
-    },
-  ];
+  const { user, updateCredits } = useContext(AuthContext)!;
+  const [creditAmount, setCreditAmount] = useState<number>(1);
+  const PRICE_PER_CREDIT = 500;
+
+  const handleIncrement = () => {
+    setCreditAmount((prev) => prev + 1);
+  };
+
+  const handleDecrement = () => {
+    setCreditAmount((prev) => (prev > 1 ? prev - 1 : 1));
+  };
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePurchase = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    const res = await loadRazorpay();
+
+    if (!res) {
+      alert("Razorpay SDK failed to load. Are you online?");
+      return;
+    }
+
+    try {
+      const order = await paymentService.createOrder(creditAmount, user.token);
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY || "rzp_test_placeholder",
+        amount: order.amount,
+        currency: order.currency,
+        name: "AI Floor Plan Analysis",
+        description: `Purchase ${creditAmount} Credits`,
+        image:
+          user.companyLogo ||
+          "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+        order_id: order.id,
+        handler: async function (response: any) {
+          const data = {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            credits: creditAmount,
+          };
+
+          try {
+            const result = await paymentService.verifyPayment(data, user.token);
+            if (result.success) {
+              updateCredits(result.credits);
+              alert(`Payment Successful! Added ${creditAmount} credits.`);
+            }
+          } catch (error) {
+            console.error(error);
+            alert("Payment verification failed");
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.companyPhone || "9999999999",
+        },
+        notes: {
+          address: user.companyAddress || "Corporate Office",
+        },
+        theme: {
+          color: isDarkMode ? "#6366f1" : "#4f46e5",
+        },
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong with payment initiation");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-3xl"></div>
+        <div className="absolute top-[20%] -left-[10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-3xl"></div>
+      </div>
+
       <Header isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
       {/* Back Button */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 relative z-10">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors group"
@@ -81,134 +132,147 @@ const Pricing: React.FC<PricingProps> = ({ isDarkMode, toggleTheme }) => {
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="text-center">
-          <h2 className="text-base font-semibold text-indigo-600 dark:text-indigo-400 tracking-wide uppercase">
-            Pricing
-          </h2>
-          <p className="mt-1 text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl sm:tracking-tight lg:text-6xl">
-             Choose the best plan for your self
-          </p>
-          <p className="max-w-xl mt-5 mx-auto text-xl text-slate-500 dark:text-slate-400">
-            Choose the plan that best fits your construction estimation needs.
-            No hidden fees.
-          </p>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 relative z-10 min-h-[calc(100vh-100px)] flex flex-col justify-center">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left Column: Text & Features */}
+          <div className="text-left space-y-8">
+            <div>
+              <span className="inline-block py-1 px-3 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold tracking-wide uppercase mb-4">
+                Simple Pricing
+              </span>
+              <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white sm:text-5xl tracking-tight mb-4">
+                Purchase Credits <br />
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  Instantly
+                </span>
+              </h2>
+              <p className="max-w-xl text-lg text-slate-500 dark:text-slate-400">
+                No subscriptions. No hidden fees. Pay only for what you use.
+                <br />
+                <span className="font-medium text-slate-900 dark:text-white mt-2 block">
+                  1 Credit = 1 Full Project Analysis
+                </span>
+              </p>
+            </div>
 
-        <div className="mt-16 grid gap-8 lg:grid-cols-3 lg:gap-x-8">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col rounded-2xl border ${
-                plan.recommended
-                  ? "border-indigo-600 shadow-2xl z-10 scale-105"
-                  : "border-slate-200 dark:border-slate-700 shadow-sm"
-              } bg-white dark:bg-slate-800 p-8 transition-transform hover:-translate-y-1 hover:shadow-lg`}
-            >
-              {plan.recommended && (
-                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2">
-                  <span className="inline-flex rounded-full bg-indigo-600 px-4 py-1 text-sm font-semibold text-white shadow-sm">
-                    Recommended
+            {/* Feature Grid - Compact */}
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Secure
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Stripe protected
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Instant
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Immediate access
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    Team Ready
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Share with team
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Calculator Card */}
+          <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 backdrop-blur-sm relative transform transition-all hover:scale-[1.01]">
+            <div className="p-6 md:p-8">
+              <h3 className="text-xl font-bold text-center text-slate-900 dark:text-white mb-6">
+                Configure Your Pack
+              </h3>
+
+              {/* Counter Section */}
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-3 mb-6 border border-slate-100 dark:border-slate-700">
+                <button
+                  onClick={handleDecrement}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 text-slate-600 dark:text-slate-300 transition-all hover:scale-105 active:scale-95"
+                  disabled={creditAmount <= 1}
+                >
+                  <Minus className="w-5 h-5" />
+                </button>
+
+                <div className="flex flex-col items-center">
+                  <input
+                    type="number"
+                    min="1"
+                    value={creditAmount || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        // @ts-ignore - temporary allow empty for typing
+                        setCreditAmount("");
+                        return;
+                      }
+                      const num = parseInt(val);
+                      if (!isNaN(num) && num > 0) setCreditAmount(num);
+                    }}
+                    onBlur={() => {
+                      // Reset to 1 if left empty or 0
+                      if (!creditAmount || creditAmount < 1) setCreditAmount(1);
+                    }}
+                    className="w-20 text-center text-4xl font-black bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    Credits
                   </span>
                 </div>
-              )}
 
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  {plan.name}
-                </h3>
-                {plan.recommended ? (
-                  <p className="absolute top-0 -translate-y-1/2 bg-indigo-500 text-white px-3 py-0.5 rounded-full text-sm font-semibold transform shadow-sm">
-                    Most Popular
-                  </p>
-                ) : null}
-
-                <p className="mt-4 flex items-baseline text-slate-900 dark:text-white">
-                  <span className="text-5xl font-extrabold tracking-tight">
-                    {plan.price}
-                  </span>
-                  <span className="ml-1 text-xl font-semibold text-slate-500 dark:text-slate-400">
-                    {plan.period}
-                  </span>
-                </p>
-                <p className="mt-2 text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1">
-                  <Zap className="w-4 h-4 fill-current" /> {plan.credits}
-                </p>
-                <p className="mt-6 text-slate-500 dark:text-slate-400">
-                  {plan.description}
-                </p>
-
-                <ul role="list" className="mt-6 space-y-4">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex">
-                      <Check
-                        className="h-6 w-6 flex-shrink-0 text-green-500"
-                        aria-hidden="true"
-                      />
-                      <span className="ml-3 text-slate-500 dark:text-slate-300">
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8">
                 <button
-                  className={`block w-full rounded-lg px-6 py-3 text-center text-sm font-semibold leading-6 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-                    plan.buttonVariant === "primary"
-                      ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/30"
-                      : "bg-indigo-50 dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-slate-600"
-                  }`}
-                  onClick={() => {
-                    // Demo Logic: Simulate purchase
-                    alert(
-                      "This is a demo. In a real app, this would open Stripe/PayPal.",
-                    );
-                  }}
+                  onClick={handleIncrement}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-indigo-600 shadow-md shadow-indigo-500/30 text-white hover:bg-indigo-500 transition-all hover:scale-105 active:scale-95"
                 >
-                  {plan.buttonText}
+                  <Plus className="w-5 h-5" />
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
 
-        <div className="mt-16 pt-10 border-t border-slate-200 dark:border-slate-800">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-full mb-4">
-                <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              {/* Price Breakdown */}
+              <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-900/30 p-4 rounded-xl">
+                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 text-sm">
+                  <span>Price per credit</span>
+                  <span>₹{PRICE_PER_CREDIT}</span>
+                </div>
+                <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">
+                    Total Pay
+                  </span>
+                  <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
+                    ₹{creditAmount * PRICE_PER_CREDIT}
+                  </span>
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                Secure Payments
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Processed securely via Stripe. We never store credit card
-                details.
-              </p>
-            </div>
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-full mb-4">
-                <Zap className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                Instant Activation
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Credits are added to your account instantly after purchase.
-              </p>
-            </div>
-            <div className="flex flex-col items-center text-center p-4">
-              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-full mb-4">
-                <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                Team Access
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Share credits and projects with your entire estimation team.
-              </p>
+
+              <button
+                onClick={handlePurchase}
+                className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold py-3 px-6 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-2"
+              >
+                <span>Buy Now</span>
+              </button>
             </div>
           </div>
         </div>

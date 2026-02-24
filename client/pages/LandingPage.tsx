@@ -63,7 +63,7 @@ export default function LandingPage({
           <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-200/30 dark:bg-blue-900/20 rounded-full blur-3xl accent-blue-500" />
         </div>
 
-        <div className="container mx-auto px-4 relative z-10">
+        <div className="container mx-auto px-6 md:px-12 lg:px-24 xl:px-32 relative z-10">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             {/* Left Content */}
             <motion.div
@@ -121,18 +121,175 @@ export default function LandingPage({
               {/* Abstract Floating UI Representation */}
               <div className="relative rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 p-6 shadow-2xl">
                 {/* Simulated Floor Plan Chart */}
-                <div className="aspect-[4/3] rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 relative overflow-hidden flex items-center justify-center">
+                <div className="aspect-[4/3] rounded-lg bg-slate-50 dark:bg-slate-900 relative overflow-hidden border border-slate-200 dark:border-slate-700">
+                  {/* Grid Background */}
                   <div
-                    className="absolute inset-0 opacity-10 dark:opacity-20 flex"
+                    className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
                     style={{
-                      backgroundImage:
-                        "radial-gradient(circle, #6366f1 1px, transparent 1px)",
+                      backgroundImage: `linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(90deg, #6366f1 1px, transparent 1px)`,
                       backgroundSize: "20px 20px",
                     }}
-                  ></div>
-                  <Layout className="w-24 h-24 text-blue-500/50" />
+                  />
 
-                  {/* Floating Cards simulating analysis */}
+                  {/* Floor Plan SVG */}
+                  <svg
+                    className="absolute inset-0 w-full h-full p-8 text-slate-800 dark:text-slate-200"
+                    viewBox="0 0 400 300"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    {/* Walls */}
+                    <path
+                      d="M50 50 H 350 V 250 H 50 V 50 Z"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="opacity-90"
+                    />
+                    <path
+                      d="M50 150 H 200 V 250"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="opacity-90"
+                    />
+                    <path
+                      d="M200 50 V 150 H 350"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="opacity-90"
+                    />
+
+                    {/* Doors */}
+                    <path
+                      d="M110 250 Q 110 220 140 220"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                    />
+                    <path d="M110 250 L 140 220" stroke="transparent" />
+                    <rect
+                      x="110"
+                      y="248"
+                      width="30"
+                      height="4"
+                      fill="white"
+                      className="dark:fill-slate-900"
+                    />
+
+                    {/* Windows */}
+                    <rect
+                      x="100"
+                      y="48"
+                      width="40"
+                      height="4"
+                      fill="white"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      className="dark:fill-slate-900"
+                    />
+                    <rect
+                      x="250"
+                      y="48"
+                      width="40"
+                      height="4"
+                      fill="white"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      className="dark:fill-slate-900"
+                    />
+                    <rect
+                      x="348"
+                      y="100"
+                      width="4"
+                      height="40"
+                      fill="white"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      className="dark:fill-slate-900"
+                    />
+
+                    {/* Room Labels */}
+                    <text
+                      x="125"
+                      y="100"
+                      fontFamily="sans-serif"
+                      fontSize="14"
+                      fill="currentColor"
+                      opacity="0.6"
+                      textAnchor="middle"
+                    >
+                      Living Room
+                    </text>
+                    <text
+                      x="275"
+                      y="100"
+                      fontFamily="sans-serif"
+                      fontSize="14"
+                      fill="currentColor"
+                      opacity="0.6"
+                      textAnchor="middle"
+                    >
+                      Kitchen
+                    </text>
+                    <text
+                      x="125"
+                      y="200"
+                      fontFamily="sans-serif"
+                      fontSize="14"
+                      fill="currentColor"
+                      opacity="0.6"
+                      textAnchor="middle"
+                    >
+                      Master Bedroom
+                    </text>
+                    <text
+                      x="275"
+                      y="200"
+                      fontFamily="sans-serif"
+                      fontSize="14"
+                      fill="currentColor"
+                      opacity="0.6"
+                      textAnchor="middle"
+                    >
+                      Garage
+                    </text>
+
+                    {/* Dimensions */}
+                    <text
+                      x="200"
+                      y="35"
+                      fontFamily="monospace"
+                      fontSize="10"
+                      fill="#6366f1"
+                      textAnchor="middle"
+                    >
+                      40' 0"
+                    </text>
+                    <text
+                      x="365"
+                      y="150"
+                      fontFamily="monospace"
+                      fontSize="10"
+                      fill="#6366f1"
+                      textAnchor="middle"
+                      transform="rotate(90, 365, 150)"
+                    >
+                      30' 0"
+                    </text>
+                  </svg>
+
+                  {/* Scanned Effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-blue-500/10 border-b-2 border-blue-500/50"
+                    animate={{ top: ["0%", "100%", "0%"] }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    style={{ height: "10%" }}
+                  />
+
+                  {/* Floating Cards simulating analysis - Positioned strategically */}
                   <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{
@@ -186,7 +343,7 @@ export default function LandingPage({
 
       {/* Features Grid */}
       <section className="py-20 bg-white/50 dark:bg-slate-900/50">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-12 lg:px-24 xl:px-32">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
               Powerful AI Floor Plan Analysis
@@ -231,7 +388,7 @@ export default function LandingPage({
 
       {/* How It Works */}
       <section className="py-20">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-12 lg:px-24 xl:px-32">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-center gap-3">
               How It Works
@@ -263,7 +420,7 @@ export default function LandingPage({
 
       {/* Trusted By / CTA Footer Style */}
       <section className="py-20 bg-slate-100 dark:bg-slate-800/50">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-6 md:px-12 lg:px-24 xl:px-32 text-center">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-12">
             Trusted by Professionals
           </h2>

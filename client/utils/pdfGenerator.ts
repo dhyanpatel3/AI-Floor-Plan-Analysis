@@ -15,6 +15,12 @@ interface PDFGeneratorParams {
   totalCost: number;
   settings: ProjectSettings;
   calibrationArea: string; // To show calibrated area
+  companyDetails?: {
+    name?: string;
+    address?: string;
+    phone?: string;
+    logo?: string;
+  };
 }
 
 export const generatePDF = ({
@@ -26,6 +32,7 @@ export const generatePDF = ({
   totalCost,
   settings,
   calibrationArea,
+  companyDetails,
 }: PDFGeneratorParams) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -45,21 +52,82 @@ export const generatePDF = ({
   };
 
   // --- Header ---
-  doc.setFontSize(22);
-  doc.setTextColor(40, 40, 40);
-  doc.text("Project Cost Estimation Report", margin, 20);
+  let contentStartY = 42;
 
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, 26);
+  // Add Company Logo if available
+  // Making logo medium: 30x30
+  const logoSize = 30;
+  let logoBottomY = 10 + logoSize;
+  let hasCompanyDetails = false;
+
+  if (companyDetails?.logo) {
+    try {
+      doc.addImage(companyDetails.logo, "PNG", margin, 10, logoSize, logoSize);
+      hasCompanyDetails = true;
+    } catch (e) {
+      console.error("Error adding logo", e);
+      // If logo fails, we still want to show text, but maybe adjust alignment?
+      // For now, let's just proceed.
+    }
+  }
+
+  // Company Details (Replacing Title)
+  const textX = companyDetails?.logo ? margin + logoSize + 10 : margin;
+  let textY = 22; // Start slightly lower to align with logo top
+
+  if (
+    companyDetails?.name ||
+    companyDetails?.address ||
+    companyDetails?.phone
+  ) {
+    hasCompanyDetails = true;
+    if (companyDetails.name) {
+      doc.setFontSize(20); // Medium-Large Company Name
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(40, 40, 40);
+      doc.text(companyDetails.name, textX, textY);
+      textY += 8;
+    }
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10); // Standard readable size
+    doc.setTextColor(80, 80, 80);
+
+    if (companyDetails.address) {
+      doc.text(companyDetails.address, textX, textY);
+      textY += 5;
+    }
+    if (companyDetails.phone) {
+      doc.text(companyDetails.phone, textX, textY);
+      textY += 5;
+    }
+
+    // Calculate where content should start
+    // Ensure we have padding below the lowest element (logo or text)
+    // Add extra padding (25 units) to ensure separation
+    contentStartY = Math.max(logoBottomY, textY) + 25;
+  }
+
+  if (!hasCompanyDetails) {
+    // If no company details, keep default title
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Project Cost Estimation Report", margin, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, 30);
+    contentStartY = 45;
+  }
 
   // --- Project Summary Section ---
   doc.setDrawColor(200, 200, 200);
-  doc.line(margin, 32, pageWidth - margin, 32);
+  const lineY = contentStartY - 10;
+  doc.line(margin, lineY, pageWidth - margin, lineY);
 
   doc.setFontSize(14);
   doc.setTextColor(60, 60, 60);
-  doc.text("Project Summary", margin, 42);
+  doc.text("Project Summary", margin, contentStartY);
 
   const summaryData = [
     ["Total Estimated Cost", formatCurrency(totalCost)],
@@ -80,7 +148,7 @@ export const generatePDF = ({
   ];
 
   autoTable(doc, {
-    startY: 48,
+    startY: contentStartY + 5, // Dynamic startY based on header height
     head: [],
     body: summaryData,
     theme: "plain",

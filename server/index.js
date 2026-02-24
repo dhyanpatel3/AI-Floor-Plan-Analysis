@@ -35,8 +35,10 @@ app.options("*", cors());
 app.use(express.json({ limit: "50mb" })); // Increase limit for base64 images
 app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/payment", require("./routes/paymentRoutes"));
 app.use("/api/floorplans", require("./routes/floorPlanRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 app.get("/", (req, res) => {
   res.send({ status: "Backend API is running", timestamp: new Date() });
@@ -47,6 +49,7 @@ const apiRouter = express.Router();
 apiRouter.use("/auth", require("./routes/authRoutes"));
 apiRouter.use("/floorplans", require("./routes/floorPlanRoutes"));
 apiRouter.use("/settings", require("./routes/settingsRoutes"));
+apiRouter.use("/admin", require("./routes/adminRoutes"));
 
 app.use("/api", apiRouter);
 // Fallback: If Vercel rewrites strip '/api', this catches it
@@ -80,10 +83,10 @@ app.post("/api/analyze", protect, async (req, res) => {
     const model = "gemini-2.5-flash";
 
     const prompt = `
-      Analyze this construction floor plan image/PDF. 
-      Act as a professional Quantity Surveyor.
+      Analyze this image. First, determine if it is a valid architectural floor plan.
+      If it is NOT a floor plan (e.g. valid inputs are 2D technical drawings of buildings/rooms), return "isValid": false and a "validationError" message explaining why.
       
-      Extract the following structural data:
+      If it IS a valid floor plan, return "isValid": true and extract the following structural data:
       1. Total Built-up Area (Sq Feet).
       2. Total Wall Length (linear feet).
       3. DETAILED ROOM LIST: For each room, identify its Name, Type, Area (SqFt), and PERIMETER (Linear Feet). 
@@ -118,6 +121,8 @@ app.post("/api/analyze", protect, async (req, res) => {
             responseSchema: {
               type: Type.OBJECT,
               properties: {
+                isValid: { type: Type.BOOLEAN },
+                validationError: { type: Type.STRING },
                 summary: {
                   type: Type.OBJECT,
                   properties: {
@@ -130,6 +135,7 @@ app.post("/api/analyze", protect, async (req, res) => {
                     "totalWallLengthFt",
                     "wallThicknessFt",
                   ],
+                  nullable: true,
                 },
                 rooms: {
                   type: Type.ARRAY,
@@ -154,6 +160,7 @@ app.post("/api/analyze", protect, async (req, res) => {
                     },
                     required: ["name", "areaSqFt", "perimeterFt", "type"],
                   },
+                  nullable: true,
                 },
                 elements: {
                   type: Type.OBJECT,
@@ -162,9 +169,10 @@ app.post("/api/analyze", protect, async (req, res) => {
                     windows: { type: Type.NUMBER },
                   },
                   required: ["doors", "windows"],
+                  nullable: true,
                 },
               },
-              required: ["summary", "rooms", "elements"],
+              required: ["isValid"],
             },
           },
         });
@@ -206,6 +214,15 @@ app.post("/api/analyze", protect, async (req, res) => {
           .json({ error: "Daily quota exceeded. Please try again later." });
       }
       return res.status(500).json({ error: "Failed to process image." });
+    }
+
+    // Check validity
+    if (result.isValid === false) {
+      return res.status(400).json({
+        error:
+          result.validationError ||
+          "The uploaded image does not appear to be a valid floor plan.",
+      });
     }
 
     // Deduct credit after successful analysis
