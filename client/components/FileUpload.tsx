@@ -128,20 +128,35 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 </div>
               ) : (
                 <div
-                  className={`rounded-lg overflow-hidden shadow-sm bg-white dark:bg-slate-800 p-2 ${
+                  className={`relative rounded-lg overflow-hidden shadow-sm bg-white dark:bg-slate-800 p-2 ${
                     variant === "default"
                       ? "flex-1 min-h-0 flex flex-col justify-center"
                       : ""
                   }`}
                 >
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className={`mx-auto rounded-md object-contain ${
-                      variant === "default" ? "max-h-full" : "max-h-40"
-                    }`}
-                  />
-                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate shrink-0">
+                  <div className="relative mx-auto max-h-full">
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className={`mx-auto rounded-md object-contain ${
+                        variant === "default" ? "max-h-full" : "max-h-40"
+                      } ${isAnalyzing ? "blur-[2px] scale-[1.01]" : ""}`}
+                    />
+
+                    {/* Scanning Animation Overlay */}
+                    {isAnalyzing && (
+                      <div className="absolute inset-0 rounded-md overflow-hidden pointer-events-none z-10">
+                        {/* Pulse Background */}
+                        <div className="absolute inset-0 bg-indigo-500/5 dark:bg-indigo-400/5 animate-pulse"></div>
+
+                        {/* Scanning Line & Beam */}
+                        <div className="absolute left-0 w-full h-24 bg-gradient-to-b from-transparent via-indigo-500/20 to-transparent -top-24 animate-scan"></div>
+                        <div className="absolute left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] -top-24 animate-scan"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate shrink-0 text-center">
                     {file?.name}
                   </div>
                 </div>

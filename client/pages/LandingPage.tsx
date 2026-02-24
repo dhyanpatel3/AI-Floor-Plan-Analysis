@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,6 +13,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Header } from "../components/Header";
+import AuthContext from "../contexts/AuthContext";
+import LoginModal from "../components/LoginModal";
 
 interface LandingPageProps {
   isDarkMode: boolean;
@@ -44,15 +46,24 @@ export default function LandingPage({
   toggleTheme,
 }: LandingPageProps) {
   const navigate = useNavigate();
+  const authContext = useContext(AuthContext);
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
 
   const handleUploadClick = () => {
-    // Navigate to dashboard or login
-    // For now, let's go to dashboard as it handles both
-    navigate("/dashboard");
+    // Navigate to dashboard if logged in, otherwise open login modal
+    if (authContext?.user) {
+      navigate("/dashboard");
+    } else {
+      setIsLoginModalOpen(true);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-x-hidden">
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
       <Header isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
       {/* Hero Section */}

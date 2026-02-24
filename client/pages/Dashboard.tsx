@@ -18,6 +18,7 @@ import { CalibrationPanel } from "../components/CalibrationPanel";
 import { StatsSummary } from "../components/StatsSummary";
 import { ResultsDashboard } from "../components/ResultsDashboard";
 import { Modal } from "../components/Modal";
+import LoginModal from "../components/LoginModal";
 import {
   BarChart3,
   Home,
@@ -74,6 +75,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Save Modal State
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [planName, setPlanName] = useState("");
 
@@ -391,6 +393,12 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+      // Clear input value so selecting same file again works
+      e.target.value = "";
+      return;
+    }
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
@@ -985,14 +993,19 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                       <input
                         type="number"
                         step="0.1"
-                        value={settings.wallHeightFt}
-                        onChange={(e) =>
+                        value={
+                          settings.wallHeightFt === 0
+                            ? ""
+                            : settings.wallHeightFt
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
                           setSettings((prev) => ({
                             ...prev,
-                            wallHeightFt: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        className="block w-full rounded-md border-slate-200 dark:border-slate-600 pl-3 pr-8 text-sm py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                            wallHeightFt: val === "" ? 0 : parseFloat(val),
+                          }));
+                        }}
+                        className="block w-full rounded-md border-slate-200 dark:border-slate-600 pl-3 pr-8 text-sm py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <span className="absolute right-3 top-2 text-xs text-slate-500 font-bold">
                         ft
@@ -1125,6 +1138,11 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
           </div>
         </div>
       </Modal>
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </div>
   );
 }
