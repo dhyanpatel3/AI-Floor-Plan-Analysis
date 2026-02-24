@@ -933,12 +933,12 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
             </div>
           )
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden p-4 lg:p-0">
             {/* LEFT COLUMN: Sidebar Navigation & Tools */}
-            <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-              {/* Navigation */}
+            <div className="lg:col-span-3 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-2 lg:order-1">
+              {/* Navigation - Hidden on Mobile to save space, maybe move to bottom or top bar? Keeping for now but styling for mobile */}
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shrink-0">
-                <nav className="flex flex-col p-2 space-y-1">
+                <nav className="flex lg:flex-col flex-row p-2 space-y-0 lg:space-y-1 space-x-2 lg:space-x-0 overflow-x-auto lg:overflow-visible">
                   <button
                     onClick={() => setCurrentView("overview")}
                     className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
@@ -1025,12 +1025,13 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                   onFileChange={handleFileChange}
                   onAnalyze={handleAnalyze}
                   onClear={clearFile}
+                  hideClearButton={true}
                 />
               </div>
             </div>
 
             {/* RIGHT COLUMN: Main Content */}
-            <div className="lg:col-span-9 flex flex-col gap-6 h-full overflow-hidden">
+            <div className="lg:col-span-9 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-1 lg:order-2">
               {/* Stats Row */}
               <div className="shrink-0">
                 <StatsSummary

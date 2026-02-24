@@ -18,6 +18,7 @@ interface FileUploadProps {
   onAnalyze: () => void;
   onClear: () => void;
   variant?: "default" | "hero";
+  hideClearButton?: boolean;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -29,6 +30,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onAnalyze,
   onClear,
   variant = "default",
+  hideClearButton = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +102,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 variant === "default" ? "h-full flex flex-col min-h-0" : ""
               }`}
             >
-              {!isAnalyzing && (
+              {!isAnalyzing && !hideClearButton && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -139,7 +141,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                       src={previewUrl}
                       alt="Preview"
                       className={`mx-auto rounded-md object-contain ${
-                        variant === "default" ? "max-h-full" : "max-h-40"
+                        variant === "default"
+                          ? "max-h-[50vh] lg:max-h-full"
+                          : "max-h-40"
                       } ${isAnalyzing ? "blur-[2px] scale-[1.01]" : ""}`}
                     />
 
