@@ -1,6 +1,6 @@
-# AI Floor Plan Analysis & Estimator
+# AI Floor Analyzer & Estimator
 
-**AI-Floor-Plan-Analysis** is a full-stack web application designed to simplify construction estimation. By leveraging **Google's Gemini AI**, it analyzes floor plan images or PDFs to extract structural data, including room dimensions, wall lengths, and total built-up area. It then provides detailed material estimates and cost breakdowns, making it a powerful tool for quantity surveyors, architects, and homeowners.
+**AI Floor Analyzer** is a full-stack web application designed to simplify construction estimation. By leveraging **Google's Gemini AI**, it analyzes floor plan images or PDFs to extract structural data, including room dimensions, wall lengths, and total built-up area. It then provides detailed material estimates and cost breakdowns, making it a powerful tool for quantity surveyors, architects, and homeowners.
 
 ## 🚀 Features
 

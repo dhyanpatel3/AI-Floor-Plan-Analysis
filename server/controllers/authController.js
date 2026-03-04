@@ -39,9 +39,33 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
+    // Send Welcome Email
+    const message = `
+      <h1>Welcome to AI Floor Analyzer!</h1>
+      <p>Hi ${user.name},</p>
+      <p>Thank you for signing up. We are excited to help you estimate your construction projects with the power of AI.</p>
+      <p>You have been credited with <strong>${user.credits} free credits</strong> to get started.</p>
+      <br>
+      <p>To start your first analysis, imply upload a floor plan image on your dashboard.</p>
+      <p>Happy Estimating!</p>
+      <p>The AI Floor Analyzer Team</p>
+    `;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Welcome to AI Floor Analyzer",
+        text: message,
+      });
+    } catch (error) {
+      console.error("Welcome email failed:", error);
+      // Do not fail registration if email fails
+    }
+
     res.status(201).json({
       _id: user.id,
       name: user.name,
+
       email: user.email,
       credits: user.credits,
       isAdmin: user.isAdmin,

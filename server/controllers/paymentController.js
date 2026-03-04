@@ -2,6 +2,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const sendEmail = require("../utils/sendEmail");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -69,13 +70,6 @@ const verifyPayment = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (user) {
-      user.credits += Number(credits); // We trust frontend here because signature matches order.
-      // Ideally we should verify order amount or fetch order details.
-      // But for this demo, fetching order details adds latency.
-      // Since order_id is unique and signed, user can't fake payment_id.
-      // But user CAN send valid payment_id/signature for 1 credit order but send "credits: 1000" in body.
-      // SECURITY FIX: Fetch order to get notes.credits
-
       try {
         const order = await razorpay.orders.fetch(razorpay_order_id);
         const creditsToAdd = order.notes.credits;
@@ -96,6 +90,30 @@ const verifyPayment = asyncHandler(async (req, res) => {
       }
 
       await user.save();
+
+      // Send confirmation email
+      try {
+        const message = `
+          <h1>Payment Successful</h1>
+          <p>Hi ${user.name},</p>
+          <p>Thank you for your purchase. We have successfully added <strong>${credits} credits</strong> to your account.</p>
+          <p><strong>Order ID:</strong> ${razorpay_order_id}</p>
+          <p><strong>Payment ID:</strong> ${razorpay_payment_id}</p>
+          <br>
+          <p>You now have a total of <strong>${user.credits} credits</strong>.</p>
+          <p>Happy Estimating!</p>
+          <p>The AI Floor Analyzer Team</p>
+        `;
+
+        await sendEmail({
+          to: user.email,
+          subject: "Payment Confirmation & Credits Added",
+          text: message,
+        });
+      } catch (emailError) {
+        console.error("Email send failed:", emailError);
+        // Don't fail the request if email fails, as payment was successful
+      }
 
       res.json({
         success: true,

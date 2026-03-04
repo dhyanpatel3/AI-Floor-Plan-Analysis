@@ -4,7 +4,16 @@ import AuthContext from "../contexts/AuthContext";
 import adminService from "../services/adminService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { Shield, Trash2, Edit2, Check, X, Search, User } from "lucide-react";
+import {
+  Shield,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  Search,
+  User,
+  ArrowLeft,
+} from "lucide-react";
 
 interface AdminDashboardProps {
   isDarkMode: boolean;
@@ -121,13 +130,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         className={`min-h-screen p-6 transition-colors duration-300 ${isDarkMode ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-900"}`}
       >
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <Shield className="w-8 h-8 text-indigo-600" />
-                Super Admin Dashboard
-              </h1>
-              <p className="text-slate-500 mt-2">Manage users and credits</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-slate-200 dark:border-slate-800 gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all group"
+                title="Back to Dashboard"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-500 group-hover:text-indigo-600 dark:text-slate-400 dark:group-hover:text-indigo-400 transition-colors" />
+              </button>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-slate-900 dark:text-white">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                    <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  Super Admin Dashboard
+                </h1>
+                <p className="text-slate-500 dark:text-slate-400 mt-1 ml-1 text-sm font-medium">
+                  Manage platform users and credit allocations
+                </p>
+              </div>
             </div>
 
             <div className="relative">

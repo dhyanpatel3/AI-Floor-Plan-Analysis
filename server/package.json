@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Backend for AI Floor Plan Analysis",
+  "description": "Backend for AI Floor Analyzer",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

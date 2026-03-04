@@ -12,6 +12,9 @@ import {
   Save,
   Zap,
   Shield,
+  Layers,
+  LayoutDashboard,
+  CreditCard,
 } from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import LoginModal from "./LoginModal";
@@ -57,138 +60,166 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 shadow-sm transition-colors duration-300">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <a href="/" className="block hover:opacity-80 transition-opacity">
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent tracking-tight">
-                AI-Floor-Plan-Analysis
-              </h1>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider -mt-1">
-                Construction Estimator
-              </p>
-            </div>
-          </a>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {user && (
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-950/60 transition-all duration-300">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo Section */}
+          <div className="flex items-center gap-2">
             <Link
-              to="/pricing"
-              className="px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 transition-colors flex items-center gap-1.5 mr-2 border border-indigo-200 dark:border-indigo-800"
-              title="Buy More Credits"
+              to="/"
+              className="flex items-center gap-3 group transition-opacity hover:opacity-90"
             >
-              <Zap className="w-3.5 h-3.5 fill-indigo-500 text-indigo-500" />
-              <span className="text-sm font-bold">{user.credits || 0}</span>
-              <span className="text-[10px] uppercase font-bold tracking-wide hidden sm:inline opacity-70">
-                Credits
-              </span>
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200 bg-white">
+                <img
+                  src="/logo.jpg"
+                  alt="Logo"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 tracking-tight leading-none">
+                  AI Floor Analyzer
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mt-0.5">
+                  Construction Estimator
+                </span>
+              </div>
             </Link>
-          )}
+          </div>
 
-          {onSaveProfile && user && (
-            <button
-              onClick={onSaveProfile}
-              disabled={isSaving}
-              className="px-4 py-2 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2 mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Save to Profile"
-            >
-              <Save className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">
-                {isSaving ? "Saving..." : "Save"}
-              </span>
-            </button>
-          )}
-
-          {onDownloadPDF && (
-            <button
-              onClick={onDownloadPDF}
-              disabled={isExporting}
-              className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2 mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Download Report"
-            >
-              <Download
-                className={`w-4 h-4 ${isExporting ? "animate-bounce" : ""}`}
-              />
-              <span className="text-sm font-medium hidden sm:inline">
-                {isExporting ? "Exporting..." : "Export PDF"}
-              </span>
-            </button>
-          )}
-
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
-              aria-label="Open Settings"
-              title="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-          )}
-
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="Toggle Theme"
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? (
-              <Sun className="w-5 h-5 text-amber-400" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </button>
-
-          {user ? (
-            <>
-              {user.isAdmin && (
+          {/* Right Section */}
+          <div className="flex items-center gap-2">
+            {/* Primary Actions Group */}
+            <div className="flex items-center gap-2 mr-1">
+              {user && (
                 <Link
-                  to="/admin"
-                  className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  aria-label="Admin Dashboard"
-                  title="Admin Dashboard"
+                  to="/pricing"
+                  className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800 group mr-2"
+                  title="Buy More Credits"
                 >
-                  <Shield className="w-5 h-5" />
+                  <div className="bg-amber-100 dark:bg-amber-900/30 p-1 rounded-full text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                  </div>
+                  <div className="flex flex-col leading-none pr-1">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                      Credits
+                    </span>
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      {user.credits || 0}
+                    </span>
+                  </div>
                 </Link>
               )}
-              <Link
-                to="/saved-plans"
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                aria-label="Saved Plans"
-                title="Saved Plans"
-              >
-                <Save className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/profile"
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                aria-label="Profile"
-                title="Profile"
-              >
-                <UserIcon className="w-5 h-5" />
-              </Link>
+
+              {onSaveProfile && user && (
+                <button
+                  onClick={onSaveProfile}
+                  disabled={isSaving}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+                  aria-label="Save to Profile"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? "Saving..." : "Save"}</span>
+                </button>
+              )}
+
+              {onDownloadPDF && (
+                <button
+                  onClick={onDownloadPDF}
+                  disabled={isExporting}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+                  aria-label="Download Report"
+                >
+                  <Download
+                    className={`w-4 h-4 ${isExporting ? "animate-bounce" : ""}`}
+                  />
+                  <span>{isExporting ? "Exporting..." : "Export"}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Divider */}
+            {/* <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block mx-1"></div> */}
+
+            {/* Utility Icons */}
+            <div className="flex items-center gap-2">
+              {onOpenSettings && (
+                <button
+                  onClick={onOpenSettings}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 group"
+                  aria-label="Settings"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+                </button>
+              )}
+
               <button
-                onClick={onLogout}
-                className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 relative group"
-                aria-label="Logout"
-                title="Logout"
+                onClick={toggleTheme}
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
+                aria-label="Toggle Theme"
+                title={
+                  isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
+                }
               >
-                <LogOut className="w-5 h-5" />
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5 text-amber-400 transition-transform hover:rotate-90" />
+                ) : (
+                  <Moon className="w-5 h-5 transition-transform hover:-rotate-12" />
+                )}
               </button>
-            </>
-          ) : (
-            <button
-              onClick={() => handleGoogleLogin()}
-              className="px-6 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">
-                Sign In
-              </span>
-            </button>
-          )}
+            </div>
+
+            {/* User Profile / Auth */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                {/* Admin Link */}
+                {user.isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 dark:hover:text-purple-300 transition-all duration-200"
+                    title="Admin Dashboard"
+                  >
+                    <Shield className="w-5 h-5" />
+                  </Link>
+                )}
+
+                {/* Dashboard Link */}
+                <Link
+                  to="/saved-plans"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-300 transition-all duration-200"
+                  title="Saved Plans"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                </Link>
+
+                {/* Profile Link */}
+                <Link
+                  to="/profile"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300 transition-all duration-200"
+                  title="Profile"
+                >
+                  <UserIcon className="w-5 h-5" />
+                </Link>
+
+                <button
+                  onClick={onLogout}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-300 transition-all duration-200"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleGoogleLogin()}
+                className="ml-2 flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold shadow-lg shadow-slate-900/20 dark:shadow-white/10 transition-all hover:scale-105 active:scale-95 hover:shadow-xl"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
       {/* LoginModal removed or kept for other purposes if needed, but not triggered by Sign In button anymore */}

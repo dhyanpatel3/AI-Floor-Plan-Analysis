@@ -43,12 +43,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <X className="w-5 h-5" />
         </button>
 
-        <div className="mb-6 bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-2xl">
-          <Building2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        <div className="mb-6 rounded-2xl overflow-hidden shadow-xl shadow-indigo-500/10">
+          <img src="/logo.jpg" alt="Logo" className="w-20 h-20 object-cover" />
         </div>
 
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 font-serif text-center">
-          AI-Floor-Plan-Analysis
+          AI Floor Analyzer
         </h2>
 
         <p className="text-slate-500 dark:text-slate-400 text-center mb-8 text-sm">
