@@ -4,6 +4,7 @@ import AuthContext from "../contexts/AuthContext";
 import adminService from "../services/adminService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import {
   Shield,
   Trash2,
@@ -105,19 +106,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this user? This cannot be undone.",
-      )
-    ) {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (result.isConfirmed) {
       try {
         if (user?.token) {
           await adminService.deleteUser(userId, user.token);
-          toast.success("User deleted successfully");
+          Swal.fire("Deleted!", "User has been deleted.", "success");
           setUsers(users.filter((u) => u._id !== userId));
         }
       } catch (error: any) {
-        toast.error(error.response?.data?.message || "Failed to delete user");
+        Swal.fire(
+          "Error!",
+          error.response?.data?.message || "Failed to delete user",
+          "error"
+        );
       }
     }
   };
