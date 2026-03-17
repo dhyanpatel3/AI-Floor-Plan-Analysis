@@ -13,6 +13,7 @@ import {
   Search,
   User,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -42,6 +43,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Edit logic
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCredits, setEditCredits] = useState<number>(0);
+  const [isSavingId, setIsSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -83,6 +85,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleSaveCredits = async (userId: string) => {
+    setIsSavingId(userId);
     try {
       if (user?.token) {
         await adminService.updateUserCredits(userId, editCredits, user.token);
@@ -96,6 +99,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       }
     } catch (error) {
       toast.error("Failed to update credits");
+    } finally {
+      setIsSavingId(null);
     }
   };
 
@@ -265,10 +270,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <>
                                 <button
                                   onClick={() => handleSaveCredits(u._id)}
-                                  className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                                  disabled={isSavingId === u._id}
+                                  className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title="Save"
                                 >
-                                  <Check className="w-4 h-4" />
+                                  {isSavingId === u._id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Check className="w-4 h-4" />
+                                  )}
                                 </button>
                                 <button
                                   onClick={handleCancelEdit}

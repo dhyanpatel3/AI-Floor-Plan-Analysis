@@ -29,6 +29,7 @@ import {
   ArrowRight,
   Clock,
   LayoutDashboard,
+  Loader2,
 } from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import floorPlanService from "../services/floorPlanService";
@@ -71,6 +72,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -376,6 +378,7 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
     }
 
     try {
+      setIsSavingSettings(true);
       await settingsService.saveSettings(user.token, {
         projectSettings: settings,
         customRates,
@@ -389,6 +392,8 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
       toast.error(
         err.response?.data?.message || err.message || "Failed to save settings",
       );
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -718,206 +723,317 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 transition-colors duration-300 overflow-hidden">
-      <Header
-        isDarkMode={isDarkMode}
-        toggleTheme={toggleTheme}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onDownloadPDF={calibratedAnalysis ? handleDownloadPDF : undefined}
-        onSaveProfile={calibratedAnalysis ? handleSaveToProfile : undefined}
-        isSaving={isSaving}
-        isExporting={isExporting}
-      />
+    <>
+      {isSavingSettings && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm transition-all">
+          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-white">
+            Saving Settings...
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">
+            Please wait while we update your preferences
+          </p>
+        </div>
+      )}
+      <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 transition-colors duration-300 overflow-hidden">
+        <Header
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onDownloadPDF={calibratedAnalysis ? handleDownloadPDF : undefined}
+          onSaveProfile={calibratedAnalysis ? handleSaveToProfile : undefined}
+          isSaving={isSaving}
+          isExporting={isExporting}
+        />
 
-      <main className="flex-1 w-full px-4 py-6 overflow-hidden">
-        {!calibratedAnalysis ? (
-          user && !showUpload ? (
-            // HOME DASHBOARD VIEW
-            <div className="h-full flex flex-col animate-fade-in overflow-y-auto custom-scrollbar pb-10">
-              {/* Welcome Section */}
-              <div className="mb-10 mt-4">
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                  Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-                  !
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
-                  Manage your construction estimates or start a new detailed
-                  analysis from your floor plans.
-                </p>
-              </div>
-
-              {/* Quick Actions Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                {/* Create New Card */}
-                <div
-                  onClick={() => setShowUpload(true)}
-                  className="group cursor-pointer bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Plus size={120} />
-                  </div>
-                  <div className="relative z-10 h-full flex flex-col justify-between">
-                    <div>
-                      <div className="p-3 bg-white/20 rounded-xl w-fit mb-4 backdrop-blur-sm">
-                        <Plus className="w-8 h-8 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold mb-1">New Estimate</h3>
-                      <p className="text-indigo-100 text-sm">
-                        Upload a floor plan to start analysis
-                      </p>
-                    </div>
-                    <div className="flex items-center text-sm font-semibold mt-6">
-                      Start Now{" "}
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Go to Profile / Saved Plans Card */}
-                <div
-                  onClick={() => navigate("/saved-plans")}
-                  className="group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-[0.03] group-hover:opacity-10 transition-opacity text-indigo-600 dark:text-indigo-400">
-                    <LayoutDashboard size={120} />
-                  </div>
-                  <div className="relative z-10 h-full flex flex-col justify-between">
-                    <div>
-                      <div className="p-3 bg-indigo-50 dark:bg-slate-700 rounded-xl w-fit mb-4 text-indigo-600 dark:text-indigo-400">
-                        <LayoutDashboard className="w-8 h-8" />
-                      </div>
-                      <h3 className="text-xl font-bold mb-1 text-slate-900 dark:text-white">
-                        Saved Projects
-                      </h3>
-                      <p className="text-slate-500 dark:text-slate-400 text-sm">
-                        View and manage your past estimates
-                      </p>
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-6">
-                      Go to Projects{" "}
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats / Info Card (Optional) */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center text-center">
-                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-3">
-                    <Clock className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                    {isLoadingRecent ? "..." : totalProjects}
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Total Projects Created
+        <main className="flex-1 w-full px-4 py-6 overflow-hidden">
+          {!calibratedAnalysis ? (
+            user && !showUpload ? (
+              // HOME DASHBOARD VIEW
+              <div className="h-full flex flex-col animate-fade-in overflow-y-auto custom-scrollbar pb-10">
+                {/* Welcome Section */}
+                <div className="mb-10 mt-4">
+                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    Welcome back
+                    {user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
+                  </h1>
+                  <p className="text-slate-600 dark:text-slate-400 max-w-2xl">
+                    Manage your construction estimates or start a new detailed
+                    analysis from your floor plans.
                   </p>
                 </div>
-              </div>
 
-              {/* Recent Projects Section */}
-              <div>
-                <div className="flex justify-between items-end mb-6">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    Recent Activity
-                  </h2>
-                  {recentPlans.length > 0 && (
-                    <button
-                      onClick={() => navigate("/saved-plans")}
-                      className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center"
-                    >
-                      View All <ArrowRight className="w-4 h-4 ml-1" />
-                    </button>
-                  )}
-                </div>
-
-                {isLoadingRecent ? (
-                  <div className="flex justify-center p-8">
-                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                  </div>
-                ) : recentPlans.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {recentPlans.map((plan) => (
-                      <div
-                        key={plan._id}
-                        onClick={() =>
-                          navigate("/saved-plans", {
-                            state: { openPlanId: plan._id },
-                          })
-                        }
-                        className="group cursor-pointer bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all duration-300"
-                      >
-                        <div className="h-40 overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
-                          <img
-                            src={plan.imageUrl}
-                            alt="Floor Plan"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                            <span className="text-white text-sm font-medium">
-                              View Analysis
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h4 className="font-bold text-slate-900 dark:text-white mb-1 truncate">
-                            {new Date(plan.createdAt).toLocaleDateString(
-                              undefined,
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              },
-                            )}
-                          </h4>
-                          <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-3">
-                            <span>
-                              {(
-                                plan.analysisResult.summary?.totalAreaSqFt ||
-                                (plan.analysisResult.summary?.totalAreaSqM
-                                  ? plan.analysisResult.summary.totalAreaSqM *
-                                    10.7639
-                                  : 0)
-                              ).toFixed(1)}{" "}
-                              ft²
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {plan.analysisResult.rooms?.length || 0} Rooms
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                    <div className="bg-slate-50 dark:bg-slate-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Plus className="w-8 h-8 text-slate-400" />
+                {/* Quick Actions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                  {/* Create New Card */}
+                  <div
+                    onClick={() => setShowUpload(true)}
+                    className="group cursor-pointer bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                      <Plus size={120} />
                     </div>
-                    <h3 className="text-slate-900 dark:text-white font-medium mb-1">
-                      No saved plans yet
+                    <div className="relative z-10 h-full flex flex-col justify-between">
+                      <div>
+                        <div className="p-3 bg-white/20 rounded-xl w-fit mb-4 backdrop-blur-sm">
+                          <Plus className="w-8 h-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-1">New Estimate</h3>
+                        <p className="text-indigo-100 text-sm">
+                          Upload a floor plan to start analysis
+                        </p>
+                      </div>
+                      <div className="flex items-center text-sm font-semibold mt-6">
+                        Start Now{" "}
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Go to Profile / Saved Plans Card */}
+                  <div
+                    onClick={() => navigate("/saved-plans")}
+                    className="group cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-[0.03] group-hover:opacity-10 transition-opacity text-indigo-600 dark:text-indigo-400">
+                      <LayoutDashboard size={120} />
+                    </div>
+                    <div className="relative z-10 h-full flex flex-col justify-between">
+                      <div>
+                        <div className="p-3 bg-indigo-50 dark:bg-slate-700 rounded-xl w-fit mb-4 text-indigo-600 dark:text-indigo-400">
+                          <LayoutDashboard className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-1 text-slate-900 dark:text-white">
+                          Saved Projects
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
+                          View and manage your past estimates
+                        </p>
+                      </div>
+                      <div className="flex items-center text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-6">
+                        Go to Projects{" "}
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats / Info Card (Optional) */}
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-center items-center text-center">
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-3">
+                      <Clock className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                      {isLoadingRecent ? "..." : totalProjects}
                     </h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">
-                      Create your first estimate to see it here.
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Total Projects Created
                     </p>
                   </div>
-                )}
+                </div>
+
+                {/* Recent Projects Section */}
+                <div>
+                  <div className="flex justify-between items-end mb-6">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                      Recent Activity
+                    </h2>
+                    {recentPlans.length > 0 && (
+                      <button
+                        onClick={() => navigate("/saved-plans")}
+                        className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center"
+                      >
+                        View All <ArrowRight className="w-4 h-4 ml-1" />
+                      </button>
+                    )}
+                  </div>
+
+                  {isLoadingRecent ? (
+                    <div className="flex justify-center p-8">
+                      <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    </div>
+                  ) : recentPlans.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {recentPlans.map((plan) => (
+                        <div
+                          key={plan._id}
+                          onClick={() =>
+                            navigate("/saved-plans", {
+                              state: { openPlanId: plan._id },
+                            })
+                          }
+                          className="group cursor-pointer bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all duration-300"
+                        >
+                          <div className="h-40 overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
+                            <img
+                              src={plan.imageUrl}
+                              alt="Floor Plan"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                              <span className="text-white text-sm font-medium">
+                                View Analysis
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-4">
+                            <h4 className="font-bold text-slate-900 dark:text-white mb-1 truncate">
+                              {new Date(plan.createdAt).toLocaleDateString(
+                                undefined,
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                },
+                              )}
+                            </h4>
+                            <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-3">
+                              <span>
+                                {(
+                                  plan.analysisResult.summary?.totalAreaSqFt ||
+                                  (plan.analysisResult.summary?.totalAreaSqM
+                                    ? plan.analysisResult.summary.totalAreaSqM *
+                                      10.7639
+                                    : 0)
+                                ).toFixed(1)}{" "}
+                                ft²
+                              </span>
+                              <span>•</span>
+                              <span>
+                                {plan.analysisResult.rooms?.length || 0} Rooms
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                      <div className="bg-slate-50 dark:bg-slate-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Plus className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <h3 className="text-slate-900 dark:text-white font-medium mb-1">
+                        No saved plans yet
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">
+                        Create your first estimate to see it here.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              // UPLOAD VIEW (Original Hero)
+              <div className="h-full flex flex-col items-center justify-center animate-fade-in transition-all duration-300 pointer-events-auto relative">
+                {user && (
+                  <button
+                    onClick={() => setShowUpload(false)}
+                    className="absolute top-4 left-0 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors z-10"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1 rotate-180" /> Back to
+                    Home
+                  </button>
+                )}
+                <div className="w-full max-w-3xl mx-auto px-4">
+                  <div className="transform transition-all hover:scale-[1.01] duration-300 shadow-xl rounded-xl">
+                    <FileUpload
+                      file={file}
+                      previewUrl={previewUrl}
+                      isAnalyzing={isAnalyzing}
+                      error={error}
+                      onFileChange={handleFileChange}
+                      onAnalyze={handleAnalyze}
+                      onClear={clearFile}
+                      variant="hero"
+                    />
+                  </div>
+                </div>
+              </div>
+            )
           ) : (
-            // UPLOAD VIEW (Original Hero)
-            <div className="h-full flex flex-col items-center justify-center animate-fade-in transition-all duration-300 pointer-events-auto relative">
-              {user && (
-                <button
-                  onClick={() => setShowUpload(false)}
-                  className="absolute top-4 left-0 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors z-10"
-                >
-                  <ArrowRight className="w-4 h-4 mr-1 rotate-180" /> Back to
-                  Home
-                </button>
-              )}
-              <div className="w-full max-w-3xl mx-auto px-4">
-                <div className="transform transition-all hover:scale-[1.01] duration-300 shadow-xl rounded-xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden p-4 lg:p-0">
+              {/* LEFT COLUMN: Sidebar Navigation & Tools */}
+              <div className="lg:col-span-3 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-2 lg:order-1">
+                {/* Navigation - Hidden on Mobile to save space, maybe move to bottom or top bar? Keeping for now but styling for mobile */}
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shrink-0">
+                  <nav className="flex lg:flex-col flex-row p-2 space-y-0 lg:space-y-1 space-x-2 lg:space-x-0 overflow-x-auto lg:overflow-visible">
+                    <button
+                      onClick={() => setCurrentView("overview")}
+                      className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        currentView === "overview"
+                          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                      }`}
+                    >
+                      <BarChart3 className="w-5 h-5 mr-3" />
+                      Cost Overview
+                    </button>
+                    <button
+                      onClick={() => setCurrentView("rooms")}
+                      className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        currentView === "rooms"
+                          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                      }`}
+                    >
+                      <Home className="w-5 h-5 mr-3" />
+                      Room Analysis
+                    </button>
+                    <button
+                      onClick={() => setCurrentView("boq")}
+                      className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        currentView === "boq"
+                          ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
+                      }`}
+                    >
+                      <List className="w-5 h-5 mr-3" />
+                      Full BOQ
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Parameters Panel */}
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 shrink-0 transition-all duration-300">
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3 flex items-center">
+                    <Ruler className="w-4 h-4 mr-2 text-indigo-500" />
+                    Parameters
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Ceiling Height */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          Ceiling Height
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={
+                            settings.wallHeightFt === 0
+                              ? ""
+                              : settings.wallHeightFt
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettings((prev) => ({
+                              ...prev,
+                              wallHeightFt: val === "" ? 0 : parseFloat(val),
+                            }));
+                          }}
+                          className="block w-full rounded-md border-slate-200 dark:border-slate-600 pl-3 pr-8 text-sm py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="absolute right-3 top-2 text-xs text-slate-500 font-bold">
+                          ft
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upload & Preview */}
+                <div className="transition-all duration-300 flex-1 min-h-0 flex flex-col">
                   <FileUpload
                     file={file}
                     previewUrl={previewUrl}
@@ -926,225 +1042,132 @@ function Dashboard({ isDarkMode, toggleTheme }: DashboardProps) {
                     onFileChange={handleFileChange}
                     onAnalyze={handleAnalyze}
                     onClear={clearFile}
-                    variant="hero"
+                    hideClearButton={true}
+                  />
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Main Content */}
+              <div className="lg:col-span-9 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-1 lg:order-2">
+                {/* Stats Row */}
+                <div className="shrink-0">
+                  <StatsSummary
+                    analysis={calibratedAnalysis}
+                    totalCost={totalProjectCost}
+                    formatCurrency={formatINR}
+                  />
+                </div>
+
+                {/* Dashboard View */}
+                <div className="flex-1 overflow-hidden">
+                  <ResultsDashboard
+                    analysis={calibratedAnalysis}
+                    globalStructureCosts={globalStructureCosts}
+                    settings={settings}
+                    customRates={customRates}
+                    onRateUpdate={handleRateUpdate}
+                    onQuantityUpdate={handleQuantityUpdate}
+                    formatCurrency={formatINR}
+                    consolidatedReport={consolidatedReport}
+                    currentView={currentView}
+                    onViewChange={setCurrentView}
+                    scalingFactors={scalingFactors}
                   />
                 </div>
               </div>
             </div>
-          )
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden p-4 lg:p-0">
-            {/* LEFT COLUMN: Sidebar Navigation & Tools */}
-            <div className="lg:col-span-3 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-2 lg:order-1">
-              {/* Navigation - Hidden on Mobile to save space, maybe move to bottom or top bar? Keeping for now but styling for mobile */}
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 shrink-0">
-                <nav className="flex lg:flex-col flex-row p-2 space-y-0 lg:space-y-1 space-x-2 lg:space-x-0 overflow-x-auto lg:overflow-visible">
-                  <button
-                    onClick={() => setCurrentView("overview")}
-                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      currentView === "overview"
-                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    }`}
-                  >
-                    <BarChart3 className="w-5 h-5 mr-3" />
-                    Cost Overview
-                  </button>
-                  <button
-                    onClick={() => setCurrentView("rooms")}
-                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      currentView === "rooms"
-                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    }`}
-                  >
-                    <Home className="w-5 h-5 mr-3" />
-                    Room Analysis
-                  </button>
-                  <button
-                    onClick={() => setCurrentView("boq")}
-                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      currentView === "boq"
-                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-4 border-indigo-600"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    }`}
-                  >
-                    <List className="w-5 h-5 mr-3" />
-                    Full BOQ
-                  </button>
-                </nav>
-              </div>
+          )}
+        </main>
 
-              {/* Parameters Panel */}
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 shrink-0 transition-all duration-300">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3 flex items-center">
-                  <Ruler className="w-4 h-4 mr-2 text-indigo-500" />
-                  Parameters
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Ceiling Height */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Ceiling Height
-                      </label>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={
-                          settings.wallHeightFt === 0
-                            ? ""
-                            : settings.wallHeightFt
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSettings((prev) => ({
-                            ...prev,
-                            wallHeightFt: val === "" ? 0 : parseFloat(val),
-                          }));
-                        }}
-                        className="block w-full rounded-md border-slate-200 dark:border-slate-600 pl-3 pr-8 text-sm py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <span className="absolute right-3 top-2 text-xs text-slate-500 font-bold">
-                        ft
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upload & Preview */}
-              <div className="transition-all duration-300 flex-1 min-h-0 flex flex-col">
-                <FileUpload
-                  file={file}
-                  previewUrl={previewUrl}
-                  isAnalyzing={isAnalyzing}
-                  error={error}
-                  onFileChange={handleFileChange}
-                  onAnalyze={handleAnalyze}
-                  onClear={clearFile}
-                  hideClearButton={true}
-                />
-              </div>
+        <Modal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          title="Project Settings"
+        >
+          <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <CalibrationPanel
+                calibrationArea={calibrationArea}
+                setCalibrationArea={setCalibrationArea}
+                settings={settings}
+                setSettings={setSettings}
+                variant="clean"
+                customRates={customRates}
+                onRateUpdate={handleRateUpdate}
+                // Removed customQuantities props to CalibrationPanel as requested
+                isPlanAnalyzed={!!calibratedAnalysis}
+              />
             </div>
-
-            {/* RIGHT COLUMN: Main Content */}
-            <div className="lg:col-span-9 flex flex-col gap-4 lg:gap-6 h-auto lg:h-full lg:overflow-hidden order-1 lg:order-2">
-              {/* Stats Row */}
-              <div className="shrink-0">
-                <StatsSummary
-                  analysis={calibratedAnalysis}
-                  totalCost={totalProjectCost}
-                  formatCurrency={formatINR}
-                />
-              </div>
-
-              {/* Dashboard View */}
-              <div className="flex-1 overflow-hidden">
-                <ResultsDashboard
-                  analysis={calibratedAnalysis}
-                  globalStructureCosts={globalStructureCosts}
-                  settings={settings}
-                  customRates={customRates}
-                  onRateUpdate={handleRateUpdate}
-                  onQuantityUpdate={handleQuantityUpdate}
-                  formatCurrency={formatINR}
-                  consolidatedReport={consolidatedReport}
-                  currentView={currentView}
-                  onViewChange={setCurrentView}
-                  scalingFactors={scalingFactors}
-                />
-              </div>
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-800 shrink-0">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSavingSettings}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSavingSettings ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {isSavingSettings ? "Saving..." : "Save Settings"}
+              </button>
             </div>
           </div>
-        )}
-      </main>
+        </Modal>
 
-      <Modal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        title="Project Settings"
-      >
-        <div className="flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <CalibrationPanel
-              calibrationArea={calibrationArea}
-              setCalibrationArea={setCalibrationArea}
-              settings={settings}
-              setSettings={setSettings}
-              variant="clean"
-              customRates={customRates}
-              onRateUpdate={handleRateUpdate}
-              // Removed customQuantities props to CalibrationPanel as requested
-              isPlanAnalyzed={!!calibratedAnalysis}
-            />
+        <Modal
+          isOpen={isSaveModalOpen}
+          onClose={() => setIsSaveModalOpen(false)}
+          title="Save Project"
+        >
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Project Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm"
+                placeholder="e.g. My Dream Home"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") performSave();
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setIsSaveModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={performSave}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                disabled={isSaving}
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? "Saving..." : "Save Project"}
+              </button>
+            </div>
           </div>
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-white dark:bg-slate-800 shrink-0">
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveSettings}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              Save Settings
-            </button>
-          </div>
-        </div>
-      </Modal>
+        </Modal>
 
-      <Modal
-        isOpen={isSaveModalOpen}
-        onClose={() => setIsSaveModalOpen(false)}
-        title="Save Project"
-      >
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Project Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={planName}
-              onChange={(e) => setPlanName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm"
-              placeholder="e.g. My Dream Home"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") performSave();
-              }}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => setIsSaveModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={performSave}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
-              disabled={isSaving}
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? "Saving..." : "Save Project"}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
-    </div>
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+        />
+      </div>
+    </>
   );
 }
 

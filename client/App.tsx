@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -16,6 +17,25 @@ import Pricing from "./pages/Pricing";
 import Profile from "./pages/Profile.tsx";
 import SavedPlans from "./pages/SavedPlans.tsx";
 import AdminDashboard from "./pages/AdminDashboard";
+
+import Features from "./pages/Features";
+import Demo from "./pages/Demo";
+import AboutUs from "./pages/AboutUs";
+import Careers from "./pages/Careers";
+import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -41,6 +61,7 @@ function App() {
   return (
     <>
       <Router>
+        <ScrollToTop />
         <AuthProvider>
           <AnalysisProvider>
             <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
@@ -96,6 +117,71 @@ function App() {
                       isDarkMode={isDarkMode}
                       toggleTheme={toggleTheme}
                     />
+                  }
+                />
+
+                <Route
+                  path="/features"
+                  element={
+                    <Layout>
+                      <Features />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/demo"
+                  element={
+                    <Layout>
+                      <Demo />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/about-us"
+                  element={
+                    <Layout>
+                      <AboutUs />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/careers"
+                  element={
+                    <Layout>
+                      <Careers />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/contact"
+                  element={
+                    <Layout>
+                      <Contact />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/privacy-policy"
+                  element={
+                    <Layout>
+                      <PrivacyPolicy />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/terms-of-service"
+                  element={
+                    <Layout>
+                      <TermsOfService />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/cookie-policy"
+                  element={
+                    <Layout>
+                      <CookiePolicy />
+                    </Layout>
                   }
                 />
               </Routes>

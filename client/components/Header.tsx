@@ -15,6 +15,7 @@ import {
   Layers,
   LayoutDashboard,
   CreditCard,
+  Loader2,
 } from "lucide-react";
 import AuthContext from "../contexts/AuthContext";
 import LoginModal from "./LoginModal";
@@ -118,7 +119,11 @@ export const Header: React.FC<HeaderProps> = ({
                   className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                   aria-label="Save to Profile"
                 >
-                  <Save className="w-4 h-4" />
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
                   <span>{isSaving ? "Saving..." : "Save"}</span>
                 </button>
               )}
@@ -130,9 +135,11 @@ export const Header: React.FC<HeaderProps> = ({
                   className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                   aria-label="Download Report"
                 >
-                  <Download
-                    className={`w-4 h-4 ${isExporting ? "animate-bounce" : ""}`}
-                  />
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                   <span>{isExporting ? "Exporting..." : "Export"}</span>
                 </button>
               )}

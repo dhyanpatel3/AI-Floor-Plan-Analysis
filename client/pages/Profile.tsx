@@ -10,6 +10,7 @@ import {
   Phone,
   Upload,
   Save,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -311,7 +312,11 @@ function Profile() {
                     disabled={isSaving}
                     className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    <Save size={18} />
+                    {isSaving ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Save size={18} />
+                    )}
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
